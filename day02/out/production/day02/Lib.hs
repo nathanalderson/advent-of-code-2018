@@ -22,29 +22,22 @@ puzzle = do
 
 checksum :: [String] -> Int
 checksum ids = doubles * triples
-  where letterFreqs = map frequency ids
-        freqFreqs = [frequency (map snd freqs) | freqs <- letterFreqs]
-        doubles = sum [1 | f <- freqFreqs, hasFreq 2 f]
-        triples = sum [1 | f <- freqFreqs, hasFreq 3 f]
-
-frequency :: (Ord a) => [a] -> [(a, Int)]
-frequency xs = Map.toList (Map.fromListWith (+) [(x, 1) | x <- xs])
-
-hasFreq :: Int -> [(Int, Int)] -> Bool
-hasFreq n freqFreqs = Maybe.isJust (lookup n freqFreqs)
+  where doubles = sumFreq 2
+        triples = sumFreq 3
+        sumFreq n = sum [1 | f <- freqs, hasFreq n f]
+        freqs = map frequency ids
+        hasFreq n freqs = elem n (map snd freqs)
+        frequency xs = Map.toList (Map.fromListWith (+) [(x, 1) | x <- xs])
 
 ans2 :: [String] -> Maybe String
 ans2 [] = Nothing
-ans2 (id:ids) =
-  let closeMatch = fmap (common id) (getCloseMatch id ids)
-  in case closeMatch of Just s -> Just s
-                        Nothing -> ans2 ids
-
-common :: String -> String -> String
-common s1 s2 = [c | (c,i) <- zip s1 [0..], (s2 !! i) == c]
+ans2 (id:ids) = case getCloseMatch id ids of
+  Just s -> Just s
+  Nothing -> ans2 ids
 
 getCloseMatch :: String -> [String] -> Maybe String
 getCloseMatch s ss =
-  List.find (isCloseMatch s) ss
-  where isCloseMatch s1 s2 = length (common s1 s2) == (length s1) - 1
-
+  List.find (isCloseMatch s) commons
+  where commons = map (common s) ss
+        isCloseMatch s1 s2 = (length s1) == (length s2) + 1
+        common s1 s2 = [c | (c,i) <- zip s1 [0..], (s2 !! i) == c]
