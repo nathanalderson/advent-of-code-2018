@@ -8,12 +8,10 @@ import scala.io.Source
 case class Loc(x: Int, y: Int)
 case class Size(x: Int, y: Int)
 object Claim {
-  def apply(id: Int, loc_x: Int, loc_y: Int, size_x: Int, size_y: Int): Claim =
-    new Claim(id, Loc(loc_x, loc_y), Size(size_x ,size_y))
-  val re_Claim = raw"#(\d+) @ (\d+),(\d+): (\d+)x(\d+)".r
+  private val re_Claim = raw"#(\d+) @ (\d+),(\d+): (\d+)x(\d+)".r
   def apply(s: String): Claim = s match {
-    case re_Claim(id, loc_y, loc_x, size_y, size_x) =>
-      Claim(id.toInt, loc_x.toInt, loc_y.toInt, size_x.toInt ,size_y.toInt)
+    case re_Claim(id, loc_x, loc_y, size_x, size_y) =>
+      new Claim(id.toInt, Loc(loc_x.toInt, loc_y.toInt), Size(size_x.toInt ,size_y.toInt))
   }
 }
 case class Claim(id: Int, loc: Loc, size: Size) {
@@ -29,17 +27,16 @@ object Main {
     println(s"ans2 = $ans2")
   }
 
-  def overlaps(claims: Iterable[Claim]): Iterable[Loc] = {
-    val locs = claims.flatMap(claim => claim.getLocs())
-    val histogram = locs.groupBy(identity).mapValues(_.size)
-    histogram.filter{ case (_,count) => count>1 }.keys
-  }
+  def overlaps(claims: Iterable[Claim]): Iterable[Loc] =
+    histogram(claims).filter{ case (_,count) => count>1 }.keys
 
   def no_overlaps(claims: Iterable[Claim]): Iterable[Claim] = {
-    val locs = claims.flatMap(claim => claim.getLocs())
-    val histogram = locs.groupBy(identity).mapValues(_.size)
-    claims.filter(!_.getLocs.exists(histogram(_) > 1))
+    val hist = histogram(claims)
+    claims.filter { claim =>
+      !claim.getLocs.exists(hist(_) > 1)
+    }
   }
+
+  private def histogram(claims: Iterable[Claim]): Map[Loc, Int] =
+    claims.flatMap(_.getLocs).groupBy(identity).mapValues(_.size)
 }
-
-

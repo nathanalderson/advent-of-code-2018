@@ -10,16 +10,16 @@ import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class MainSuite extends WordSpec with Matchers {
-  val claims = List(Claim(1, 1,3, 4,4), Claim(2, 3,1, 4,4), Claim(3, 5,5, 2,2))
+  val claims = List(Claim("#1 @ 1,3: 4x4"), Claim("#2 @ 3,1: 4x4"), Claim("#3 @ 5,5: 2x2"))
 
   "Claim" should {
     "convert itself to locations" in {
-      val c = Claim(0, 1,1, 1,1)
+      val c = Claim("#0 @ 1,1: 1x1")
       c.getLocs() should contain theSameElementsAs List(Loc(1,1))
     }
 
     "build from a string" in {
-      Claim("#1 @ 2,3: 4x5") should be (Claim(1, 3,2, 5,4))
+      Claim("#1 @ 2,3: 4x5") should be (Claim(1, Loc(2,3), Size(4,5)))
     }
   }
 
