@@ -7,7 +7,6 @@ import java.time.{Duration, LocalDateTime}
 import java.time.format.DateTimeFormatter
 
 import scala.io.Source
-import scala.util.Try
 
 object Event {
   private val re_Event = raw"\[(.*)\] (.*)".r
