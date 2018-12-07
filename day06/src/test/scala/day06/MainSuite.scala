@@ -20,4 +20,14 @@ class MainSuite extends FunSuite with Matchers {
   test("ans1") {
     Main.ans1(lines) should be ("CABDFE")
   }
+
+  test("ans2") {
+    Main.ans2(lines, 0, 2) should be ("CABFDE", 15)
+  }
+
+  test("step") {
+    Main.step(List(Main.Busy("A", 2), Main.Busy("B", 1), Main.Idle)) should be (
+      (List(Main.Busy("A", 1), Main.Idle, Main.Idle), List("B"))
+    )
+  }
 }

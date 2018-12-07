@@ -9,6 +9,7 @@ object Main {
   def main(args: Array[String]): Unit = {
     val lines = Source.fromFile("input.txt").getLines.toList
     println(s"ans1 = ${ans1(lines)}")
+    println(s"ans2 = ${ans2(lines, 60, 5)._2}")
   }
 
   def ans1(lines: List[String]): String = {
@@ -18,13 +19,38 @@ object Main {
     val requires = input.groupBy(_._2).mapValues(_.map(_._1))
     val roots = steps.filterNot(requires.contains).sorted
     val requiresWithRoots = requires ++ roots.map(_->List())
-    sequence(requiresWithRoots, List(), roots).reverse.mkString
+    sequence(requiresWithRoots, List(), roots)._1.reverse.mkString
   }
 
-  def sequence(requires: Map[String, List[String]], completed: List[String], available: List[String]): List[String] = {
-//    println(s"*** sequence2(..., ${completed.reverse.mkString}, ${available.mkString})")
+  def ans2(lines: List[String], baseStepTime: Int, numWorkers: Int): (String, Int) = {
+    val re_Line = raw"Step (.) must be finished before step (.) can begin.".r
+    val input = lines.map { case re_Line(prereq, step) => (prereq, step) }
+    val steps = (input.map(_._1) ++ input.map(_._2)).distinct
+    val requires = input.groupBy(_._2).mapValues(_.map(_._1))
+    val roots = steps.filterNot(requires.contains).sorted
+    val requiresWithRoots = requires ++ roots.map(_->List())
+    val jobTime = (s: String) => s.toInt + baseStepTime
+    val workers = (0 until numWorkers).map(_=>Idle).toList
+    val (order, time) = sequence(requiresWithRoots, List(), roots, workers, jobTime)
+    (order.reverse.mkString, time)
+  }
+
+  sealed trait Worker
+  case object Idle extends Worker
+  case class Busy(job: String, timeLeft: Int) extends Worker
+
+  def sequence(requires: Map[String, List[String]],
+               completed: List[String],
+               available: List[String],
+               workers: List[Worker] = List(Idle),
+               jobTime: String=>Int = _=>0,
+               tick: Int = 0,
+              )
+    : (List[String], Int) =
+  {
+    println(s"$tick: sequence2(..., ${completed.reverse.mkString}, ${available.mkString}, ${workers})")
     available match {
-      case List() => completed
+      case List() => (completed, tick)
       case nextStep::rest =>
         val newCompleted = nextStep::completed
         val newAvailable = requires
@@ -34,8 +60,18 @@ object Main {
           .toSet
           .toList
           .sorted
-        sequence(requires, newCompleted, newAvailable)
+        sequence(requires, newCompleted, newAvailable, tick=tick+1)
     }
+  }
+
+  def step(workers: List[Worker]): (List[Worker], List[String]) = {
+    val (newWorkers, jobsCompleted) = workers.map {
+      case Idle => (Idle, None)
+      case Busy(job, timeLeft) =>
+        if (timeLeft > 1) (Busy(job, timeLeft-1), None)
+        else (Idle, Some(job))
+    }.unzip
+    (newWorkers, jobsCompleted.flatten)
   }
 
 }
