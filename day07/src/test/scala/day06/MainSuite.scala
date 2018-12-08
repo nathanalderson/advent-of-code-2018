@@ -26,8 +26,8 @@ class MainSuite extends FunSuite with Matchers {
   }
 
   test("step") {
-    Main.tick(List(Main.Busy("A", 2), Main.Busy("B", 1), Main.Idle)) should be (
-      (List(Main.Busy("A", 1), Main.Idle, Main.Idle), List("B"))
+    Main.tick(List(Busy("A", 2), Busy("B", 1), Idle)) should be (
+      (List(Busy("A", 1), Idle, Idle), List("B"))
     )
   }
 }

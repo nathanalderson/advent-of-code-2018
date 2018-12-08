@@ -5,6 +5,10 @@ package day06
 
 import scala.io.Source
 
+sealed trait Worker
+case object Idle extends Worker
+case class Busy(job: String, timeLeft: Int) extends Worker
+
 object Main {
   def main(args: Array[String]): Unit = {
     val lines = Source.fromFile("input.txt").getLines.toList
@@ -13,62 +17,49 @@ object Main {
   }
 
   def ans1(lines: List[String]): String = {
-    val re_Line = raw"Step (.) must be finished before step (.) can begin.".r
-    val input = lines.map { case re_Line(prereq, step) => (prereq, step) }
-    val steps = (input.map(_._1) ++ input.map(_._2)).distinct
-    val requires = input.groupBy(_._2).mapValues(_.map(_._1))
-    val roots = steps.filterNot(requires.contains).sorted
-    val requiresWithRoots = requires ++ roots.map(_->List())
-    sequence(requiresWithRoots, List(), roots)._1.reverse.mkString
+    val (order, _) = sequence(getRequires(lines), List("root"))
+    order.filterNot(_=="root").reverse.mkString
   }
 
   def ans2(lines: List[String], baseStepTime: Int, numWorkers: Int): (String, Int) = {
-    val re_Line = raw"Step (.) must be finished before step (.) can begin.".r
-    val input = lines.map { case re_Line(prereq, step) => (prereq, step) }
-    val steps = (input.map(_._1) ++ input.map(_._2)).distinct
-    val requires = input.groupBy(_._2).mapValues(_.map(_._1))
-    val roots = steps.filterNot(requires.contains).sorted
-    val requiresWithRoots = requires ++ roots.map(_->List())
-    val jobTime = (s: String) => s.toInt + baseStepTime
+    val requiresWithRoots = getRequires(lines)
+    val jobTime = (s: String) => s.head-'A'+1+baseStepTime
     val workers = (0 until numWorkers).map(_=>Idle).toList
-    val (order, time) = sequence(requiresWithRoots, List(), roots, workers, jobTime)
-    (order.reverse.mkString, time)
+    val (order, time) = sequence(requiresWithRoots, List("root"), workers, jobTime)
+    (order.filterNot(_=="root").reverse.mkString, time)
   }
-
-  sealed trait Worker
-  case object Idle extends Worker
-  case class Busy(job: String, timeLeft: Int) extends Worker
 
   def sequence(requires: Map[String, List[String]],
                completed: List[String],
-               available: List[String],
                workers: List[Worker] = List(Idle),
-               jobTime: String=>Int = _=>0,
-               tickNum: Int = 0,
-              )
+               jobTime: String=>Int = _=>1,
+               tickNum: Int = -1)
     : (List[String], Int) =
   {
-    println(s"$tickNum: sequence2(..., ${completed.reverse.mkString}, ${available.mkString}, ${workers})")
-    if (completed.length == requires.size)
+//    println(s"$tickNum: sequence(..., ${completed.reverse.mkString}, $workers)")
+    if (completed.length == requires.size+1)
       (completed, tickNum)
     else {
       val (newWorkers, justCompleted) = tick(workers)
-      val newCompleted = just
-    }
-    available match {
-      case List() => (completed, tickNum)
-      case nextStep::rest =>
-        val newCompleted = nextStep::completed
-        val newAvailable = requires
-          .filter(_._2.forall(s => newCompleted.contains(s)))
-          .keys
-          .filterNot(newCompleted.contains)
-          .toList
-          .distinct
-          .sorted
-        sequence(requires, newCompleted, newAvailable, tickNum=tickNum+1)
+      val newCompleted = justCompleted++completed
+      val available = requires
+        .filter(_._2.forall(s => newCompleted.contains(s)))
+        .keys
+        .filterNot(newCompleted.contains)
+        .filterNot(isBeingWorked(workers, _))
+        .toList
+        .distinct
+        .sorted
+      val assignedWorkers = assignWorkers(newWorkers, available, jobTime)
+      sequence(requires, newCompleted, assignedWorkers, jobTime, tickNum+1)
     }
   }
+
+  def isBeingWorked(workers: List[Worker], job: String): Boolean =
+    workers.exists {
+      case Busy(`job`,_) => true
+      case _ => false
+    }
 
   def tick(workers: List[Worker]): (List[Worker], List[String]) = {
     val (newWorkers, jobsCompleted) = workers.map {
@@ -80,4 +71,21 @@ object Main {
     (newWorkers, jobsCompleted.flatten)
   }
 
+  def assignWorkers(workers: List[Worker], jobs: List[String], jobTime: String => Int): List[Worker] = {
+    val (idles, busies) = workers.partition(_==Idle)
+    jobs match {
+      case List() => workers
+      case _ if idles.isEmpty => workers
+      case j::js => assignWorkers(Busy(j,jobTime(j))::busies++idles.tail, js, jobTime)
+    }
+  }
+
+  def getRequires(lines: List[String]): Map[String, List[String]] = {
+    val re_Line = raw"Step (.) must be finished before step (.) can begin.".r
+    val input = lines.map { case re_Line(prereq, step) => (prereq, step) }
+    val steps = (input.map(_._1) ++ input.map(_._2)).distinct
+    val requires = input.groupBy(_._2).mapValues(_.map(_._1))
+    val roots = steps.filterNot(requires.contains).sorted
+    requires ++ roots.map(_ -> List("root"))
+  }
 }
