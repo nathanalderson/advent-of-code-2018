@@ -9,25 +9,14 @@ import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class MainSuite extends FunSuite with Matchers {
-  val lines = """Step C must be finished before step A can begin.
-                |Step C must be finished before step F can begin.
-                |Step A must be finished before step B can begin.
-                |Step A must be finished before step D can begin.
-                |Step B must be finished before step E can begin.
-                |Step D must be finished before step E can begin.
-                |Step F must be finished before step E can begin.""".stripMargin.lines.toList
-
-  test("ans1") {
-    Main.ans1(lines) should be ("CABDFE")
+  val points = List(Point(1, 1), Point(1, 6), Point(8, 3),
+                    Point(3, 4), Point(5, 5), Point(8, 9))
+  test("regions") {
+    Main.regions(points)(Point(5,5)).length should be (17)
   }
 
-  test("ans2") {
-    Main.ans2(lines, 0, 2) should be ("CABFDE", 15)
-  }
-
-  test("step") {
-    Main.step(List(Main.Busy("A", 2), Main.Busy("B", 1), Main.Idle)) should be (
-      (List(Main.Busy("A", 1), Main.Idle, Main.Idle), List("B"))
-    )
+  test("totalDistances") {
+    Main.totalDistances(points)(Point(4,3)) should be (30)
+    Main.totalDistances(points)(Point(1,5)) should be (32)
   }
 }

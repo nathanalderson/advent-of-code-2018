@@ -5,73 +5,53 @@ package day06
 
 import scala.io.Source
 
+object Point {
+  def apply(a: Array[Int]): Point = new Point(a(0), a(1))
+}
+case class Point(x: Int, y: Int)
+
 object Main {
   def main(args: Array[String]): Unit = {
-    val lines = Source.fromFile("input.txt").getLines.toList
-    println(s"ans1 = ${ans1(lines)}")
-    println(s"ans2 = ${ans2(lines, 60, 5)._2}")
+    val points = Source.fromFile("input.txt")
+      .getLines
+      .map(_.split(", ").map(_.toInt))
+      .map(Point.apply)
+      .toList
+    val ans1 = regions(points).map(_._2.length).max
+    println(s"ans1 = $ans1")
+    val ans2 = totalDistances(points).count(_._2 < 10000)
+    println(s"ans2 = $ans2")
   }
 
-  def ans1(lines: List[String]): String = {
-    val re_Line = raw"Step (.) must be finished before step (.) can begin.".r
-    val input = lines.map { case re_Line(prereq, step) => (prereq, step) }
-    val steps = (input.map(_._1) ++ input.map(_._2)).distinct
-    val requires = input.groupBy(_._2).mapValues(_.map(_._1))
-    val roots = steps.filterNot(requires.contains).sorted
-    val requiresWithRoots = requires ++ roots.map(_->List())
-    sequence(requiresWithRoots, List(), roots)._1.reverse.mkString
-  }
+  def pointsInBounds(points: Seq[Point]): Seq[Point] =
+    for {
+      x <- points.map(_.x).min to points.map(_.x).max
+      y <- points.map(_.y).min to points.map(_.y).max
+    } yield Point(x,y)
 
-  def ans2(lines: List[String], baseStepTime: Int, numWorkers: Int): (String, Int) = {
-    val re_Line = raw"Step (.) must be finished before step (.) can begin.".r
-    val input = lines.map { case re_Line(prereq, step) => (prereq, step) }
-    val steps = (input.map(_._1) ++ input.map(_._2)).distinct
-    val requires = input.groupBy(_._2).mapValues(_.map(_._1))
-    val roots = steps.filterNot(requires.contains).sorted
-    val requiresWithRoots = requires ++ roots.map(_->List())
-    val jobTime = (s: String) => s.toInt + baseStepTime
-    val workers = (0 until numWorkers).map(_=>Idle).toList
-    val (order, time) = sequence(requiresWithRoots, List(), roots, workers, jobTime)
-    (order.reverse.mkString, time)
-  }
-
-  sealed trait Worker
-  case object Idle extends Worker
-  case class Busy(job: String, timeLeft: Int) extends Worker
-
-  def sequence(requires: Map[String, List[String]],
-               completed: List[String],
-               available: List[String],
-               workers: List[Worker] = List(Idle),
-               jobTime: String=>Int = _=>0,
-               tick: Int = 0,
-              )
-    : (List[String], Int) =
-  {
-    println(s"$tick: sequence2(..., ${completed.reverse.mkString}, ${available.mkString}, ${workers})")
-    available match {
-      case List() => (completed, tick)
-      case nextStep::rest =>
-        val newCompleted = nextStep::completed
-        val newAvailable = requires
-          .filter(_._2.forall(s => newCompleted.contains(s)))
-          .keys
-          .filterNot(newCompleted.contains)
-          .toSet
-          .toList
-          .sorted
-        sequence(requires, newCompleted, newAvailable, tick=tick+1)
+  def nearest(point: Point, points: Seq[Point]): Option[Point] =
+    points
+      .map(p => p -> distance(p, point))
+      .groupBy(_._2)
+      .minBy(_._1)
+    match {
+      case (_,List((p,_))) => Some(p)
+      case _ => None
     }
-  }
 
-  def step(workers: List[Worker]): (List[Worker], List[String]) = {
-    val (newWorkers, jobsCompleted) = workers.map {
-      case Idle => (Idle, None)
-      case Busy(job, timeLeft) =>
-        if (timeLeft > 1) (Busy(job, timeLeft-1), None)
-        else (Idle, Some(job))
-    }.unzip
-    (newWorkers, jobsCompleted.flatten)
-  }
+  def distance(p1: Point, p2: Point): Int =
+    Math.abs(p1.x - p2.x) + Math.abs(p1.y - p2.y)
 
+  // returns a map of each point in points to the points in its region
+  def regions(points: Seq[Point]): Map[Point, Seq[Point]] =
+    pointsInBounds(points)
+      .map(p => p->nearest(p, points))
+      .filter(_._2.isDefined)
+      .map(t=>t._1->t._2.get)
+      .groupBy(_._2)
+      .mapValues(_.map(_._2))
+
+  // returns a map of each point in points to its total distance
+  def totalDistances(points: Seq[Point]): Map[Point, Int] =
+    pointsInBounds(points).map(p=>p->points.map(distance(p,_)).sum).toMap
 }
