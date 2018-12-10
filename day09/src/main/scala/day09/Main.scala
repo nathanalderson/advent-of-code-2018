@@ -3,46 +3,62 @@
  */
 package day09
 
+// ugh, custom mutable data structure
+case class Marble(data: Int) {
+  var next: Marble = this
+  var prev: Marble = this
+  // returns the inserted marble (new current marble)
+  def insertAfter(a: Int): Marble = {
+    val n = Marble(a)
+    n.next = this.next
+    n.prev = this
+    this.next = n
+    n.next.prev = n
+    n
+  }
+  // returns score, new current marble
+  def delete(): (Long, Marble) = {
+    this.next.prev = this.prev
+    this.prev.next = this.next
+    (this.data, this.next)
+  }
+}
+
 object Main {
   def main(args: Array[String]): Unit = {
     println(s"ans1 = ${Main.play(473, 70904)}")
-    println(s"ans1 = ${Main.play(473, 70904*100)}")
+    println(s"ans2 = ${Main.play(473, 70904*100)}")
   }
 
   def play(numPlayers: Int,
            lastMarble: Int,
-           scores: Map[Int, Int] = Map(),
+           scores: Map[Int, Long] = Map(),
            currentPlayer: Int = 1,
-           marbles: List[Int] = List(0),
-           currentMarble: Int = 0,
+           currentMarble: Marble = Marble(0),
            turn: Int = 1,
           )
-    : Int =
+    : Long =
   {
-    if(turn%10000==0) println(s"turn $turn")
     if (turn == lastMarble)
       scores.values.max
     else {
       val nextPlayer = (currentPlayer % numPlayers) + 1
-      val (newMarbles, nextCurrentMarble, pointsScored) = placeMarble(marbles, currentMarble, turn)
-      val prevScore = scores.withDefaultValue(0)(currentPlayer)
+      val (nextCurrentMarble, pointsScored) = placeMarble(currentMarble, turn)
+      val prevScore = scores.withDefaultValue(0L)(currentPlayer)
       val newScores = scores.updated(currentPlayer, prevScore+pointsScored)
-      play(numPlayers, lastMarble, newScores, nextPlayer, newMarbles, nextCurrentMarble, turn+1)
+      play(numPlayers, lastMarble, newScores, nextPlayer, nextCurrentMarble, turn+1)
     }
   }
 
-  // returns: new marbles, new current marble, points scored
-  def placeMarble(marbles: List[Int], currentMarble: Int, marble: Int): (List[Int], Int, Int) = {
+  // returns: new current marble, points scored
+  def placeMarble(currentMarble: Marble, marble: Int): (Marble, Long) = {
     if (marble % 23 == 0) {
-      val removeAt = (currentMarble+(marbles.length-7)) % marbles.length
-      val (before, removed::after) = marbles.splitAt(removeAt)
-      val newMarbles = before ++ after
-      (newMarbles, removeAt, removed+marble)
+      var removeMarble = currentMarble
+      (0 until 7).foreach(_=> removeMarble = removeMarble.prev )
+      val (score, newCurrentMarble) = removeMarble.delete()
+      (newCurrentMarble, score+marble)
     } else {
-      val insertAfter = (currentMarble + 1) % marbles.length
-      val (before, after) = marbles.splitAt(insertAfter + 1)
-      val newMarbles = before ++ (marble :: after)
-      (newMarbles, insertAfter + 1, 0)
+      (currentMarble.next.insertAfter(marble), 0L)
     }
   }
 }
