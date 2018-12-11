@@ -7,15 +7,32 @@ object Main {
   case class Point(x: Int, y: Int)
 
   def main(args: Array[String]): Unit = {
+    println(s"ans1 = ${ans1(300,300)(9995)}")
   }
 
-  def powerLevel(coord: Point, sn: Int): Int = {
+  def ans1(n: Int, m: Int)(sn: Int): (Point, Int) = {
+    val grid = for(x <- 1 to 300; y <- 1 to 300) yield Point(x,y)
+    val powerLevels = grid.map(p => p->powerLevel(9995, p)).toMap
+    val threeByThreeSums = powerLevels.map{ case (p,_) => p -> nByMSum(3,3)(powerLevels, p) }
+    threeByThreeSums.maxBy(_._2)
+  }
+
+  def powerLevel(sn: Int, coord: Point): Int = {
     val rackId = coord.x + 10
-    hundredsDigit((rackId * 10 + sn) * rackId) - 5
+    hundredsDigit((rackId * coord.y + sn) * rackId) - 5
   }
 
   def hundredsDigit(n: Int): Int = {
     val s = n.toString
     if (s.length >= 3) s(s.length-3).toString.toInt else 0
+  }
+
+  def nByMSum(n: Int, m: Int)(powerLevels: Map[Point, Int], point: Point): Int = {
+    if (point.x+n > 301 || point.y+m > 301)
+      Int.MinValue
+    else {
+      val ps = for (x <- 0 until n; y <- 0 until m) yield Point(point.x + x, point.y + y)
+      ps.map(powerLevels.getOrElse(_, 0)).sum
+    }
   }
 }

@@ -17,10 +17,23 @@ class MainSuite extends FunSuite with Matchers {
   }
 
   List(
-    (Point(3,5), 8)
-  ).foreach { case (coord, sn) =>
+    (Point(3,5), 8, 4),
+    (Point(122,79), 57, -5),
+    (Point(217,196), 39, 0),
+    (Point(101,153), 71, 4),
+  ).foreach { case (coord, sn, expected) =>
     test(s"powerLevel($coord, $sn}") {
-      Main.powerLevel(coord, sn) should be (4)
+      Main.powerLevel(sn, coord) should be (expected)
     }
+  }
+
+  test("ans1") {
+    Main.ans1(300, 300)(18) should be (Point(33,45), 29)
+  }
+
+  test("3by3") {
+    val grid = for(x <- 1 to 300; y <- 1 to 300) yield Point(x,y)
+    val powerLevels = grid.map(p => p->Main.powerLevel(18, p)).toMap
+    Main.nByMSum(3,3)(powerLevels, Point(33,45)) should be (29)
   }
 }
