@@ -3,18 +3,42 @@
  */
 package day11
 
+import scala.collection.parallel.ParMap
+
 object Main {
   case class Point(x: Int, y: Int)
 
   def main(args: Array[String]): Unit = {
-    println(s"ans1 = ${ans1(300,300)(9995)}")
+    println(s"ans1 = ${ans1(9995)}")
+    println(s"ans2 = ${ans2(9995)}")
   }
 
-  def ans1(n: Int, m: Int)(sn: Int): (Point, Int) = {
+  // returns Point, power
+  def ans1(sn: Int): (Point, Int) = {
     val grid = for(x <- 1 to 300; y <- 1 to 300) yield Point(x,y)
     val powerLevels = grid.map(p => p->powerLevel(9995, p)).toMap
-    val threeByThreeSums = powerLevels.map{ case (p,_) => p -> nByMSum(3,3)(powerLevels, p) }
+    val threeByThreeSums = powerLevels.map{ case (p,_) => p -> nByNSum(3)(powerLevels, p) }
     threeByThreeSums.maxBy(_._2)
+  }
+
+  // returns (Point, subGridSize, highestPower)
+  def ans2(sn: Int): (Point, Int, Int) = {
+    val grid = for(x <- 1 to 300; y <- 1 to 300) yield Point(x,y)
+    val powerLevels = grid.map(p => p->powerLevel(sn, p)).toMap
+    val highestPowerBlocks = powerLevels.keys.par.map { p => p -> highestPowerBlock(powerLevels, p) }.toMap
+    val max = highestPowerBlocks.maxBy(_._2._1)
+    (max._1, max._2._2, max._2._1)
+  }
+
+  // returns highestPower, highestPowerN
+  def highestPowerBlock(powerLevels: Map[Point, Int], p: Point): (Int, Int) = {
+    val (highest, highestN, _) = (1 to 300).foldLeft((Int.MinValue, -1, None:Option[Int])) {
+      case ((highestSoFar, highestSoFarN, nMinusOneSum), n) =>
+        val nSum = nByNSum(n)(powerLevels, p, nMinusOneSum)
+        val (higher, higherN) = if (nSum > highestSoFar) (nSum,n) else (highestSoFar, highestSoFarN)
+        (higher, higherN, Some(nSum))
+    }
+    (highest, highestN)
   }
 
   def powerLevel(sn: Int, coord: Point): Int = {
@@ -27,12 +51,19 @@ object Main {
     if (s.length >= 3) s(s.length-3).toString.toInt else 0
   }
 
-  def nByMSum(n: Int, m: Int)(powerLevels: Map[Point, Int], point: Point): Int = {
-    if (point.x+n > 301 || point.y+m > 301)
+  def nByNSum(n: Int)(powerLevels: Map[Point, Int], point: Point, nMinus1Sum: Option[Int] = None): Int = {
+    if (point.x+n > 301 || point.y+n > 301)
       Int.MinValue
     else {
-      val ps = for (x <- 0 until n; y <- 0 until m) yield Point(point.x + x, point.y + y)
-      ps.map(powerLevels.getOrElse(_, 0)).sum
+      nMinus1Sum match{
+        case Some(prevSum) =>
+          val right = for (y <- 0 until n) yield Point(point.x+n-1,point.y+y)
+          val bottom = for (x <- 0 until n-1) yield Point(point.x+x,point.y+n-1)
+          (right++bottom).map{ powerLevels.getOrElse(_,0) }.sum + prevSum
+        case None =>
+          val ps = for (x <- 0 until n; y <- 0 until n) yield Point(point.x + x, point.y + y)
+          ps.map(powerLevels.getOrElse(_, 0)).sum
+      }
     }
   }
 }

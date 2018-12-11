@@ -27,13 +27,27 @@ class MainSuite extends FunSuite with Matchers {
     }
   }
 
-  test("ans1") {
-    Main.ans1(300, 300)(18) should be (Point(33,45), 29)
-  }
-
-  test("3by3") {
+  test("nByNSum") {
     val grid = for(x <- 1 to 300; y <- 1 to 300) yield Point(x,y)
     val powerLevels = grid.map(p => p->Main.powerLevel(18, p)).toMap
-    Main.nByMSum(3,3)(powerLevels, Point(33,45)) should be (29)
+    val threeBy = Main.nByNSum(3)(powerLevels, Point(33,45))
+    threeBy should be (29)
+    val fourBy = Main.nByNSum(4)(powerLevels, Point(33,45))
+    fourBy should be (12)
+    Main.nByNSum(4)(powerLevels, Point(33,45), Some(threeBy)) should be (fourBy)
+  }
+
+  test("highestPowerBlock") {
+    val grid = for(x <- 1 to 300; y <- 1 to 300) yield Point(x,y)
+    val powerLevels = grid.map(p => p->Main.powerLevel(18, p)).toMap
+    Main.highestPowerBlock(powerLevels, Point(90,269)) should be (113, 16)
+  }
+
+  test("ans1") {
+    Main.ans1(18) should be (Point(33,45), 29)
+  }
+
+  test("ans2") {
+    Main.ans2(18) should be (Point(90,269), 16, 113)
   }
 }
