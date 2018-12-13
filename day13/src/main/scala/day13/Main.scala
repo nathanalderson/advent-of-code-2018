@@ -48,17 +48,23 @@ object Cart {
 object Main {
   type Board = Map[Point, Track]
   type Carts = List[Cart]
+  type Collisions = List[Point]
 
   def main(args: Array[String]): Unit = {
     val input = Source.fromFile("input.txt").mkString
     val (board, carts) = parse(input)
+    val ticks = Iterator.iterate((carts, List[Point]())) {
+      case (carts, collisions) => tick(board)(carts)
+    }
+    val firstCollision = ticks.zipWithIndex.dropWhile(_._1._2.isEmpty).next
+    println(s"ans1 = ${firstCollision._2}") //wrong: 116
   }
 
   // returns updated carts and a list of collision locations
   def tick(board: Board)(cartsToMove: Carts,
                          cartsDoneMoving: Carts = List(),
-                         collisions: List[Point] = List())
-    : (Carts, List[Point]) =
+                         collisions: Collisions = List())
+    : (Carts, Collisions) =
   cartsToMove match {
     case List() => (cartsDoneMoving, collisions)
     case cart::rest =>
