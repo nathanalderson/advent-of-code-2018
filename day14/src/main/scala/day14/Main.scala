@@ -8,12 +8,13 @@ case class Recipe(data: Int) {
   var next: Recipe = this
   var prev: Recipe = this
 
-  def insertAfter(a: Int): Unit = {
+  def insertAfter(a: Int): Recipe = {
     val n = Recipe(a)
     n.next = this.next
     n.prev = this
     this.next = n
     n.next.prev = n
+    n
   }
 
   def toRight(i: Int): Recipe =
@@ -23,10 +24,16 @@ case class Recipe(data: Int) {
     (0 to i).foldLeft(this){ case (r,_) => r.prev }
 }
 
-case class State()
+object State {
+  def initialState: State = {
+    val recipe1 = Recipe(3)
+    val recipe2 = recipe1.insertAfter(7)
+    State(recipe1, recipe2, recipe1, recipe2, 2)
+  }
+}
+case class State(elf1: Recipe, elf2: Recipe, beginning: Recipe, end: Recipe, size: Int)
 
 object Main {
   def main(args: Array[String]): Unit = {
-
   }
 }
