@@ -53,11 +53,15 @@ object Main {
   def main(args: Array[String]): Unit = {
     val input = Source.fromFile("input.txt").mkString
     val (board, carts) = parse(input)
+    val ans1 = firstCollision(board, carts)
+    println(s"ans1 = $ans1") //wrong: 116
+  }
+
+  def firstCollision(board: Board, carts: Carts): Point = {
     val ticks = Iterator.iterate((carts, List[Point]())) {
       case (carts, collisions) => tick(board)(carts)
     }
-    val firstCollision = ticks.zipWithIndex.dropWhile(_._1._2.isEmpty).next
-    println(s"ans1 = ${firstCollision._2}") //wrong: 116
+    ticks.zipWithIndex.dropWhile(_._1._2.isEmpty).next._1._2.head
   }
 
   // returns updated carts and a list of collision locations
