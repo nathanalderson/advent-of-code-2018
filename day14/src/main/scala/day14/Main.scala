@@ -18,10 +18,10 @@ case class Recipe(data: Int) {
   }
 
   def toRight(i: Int): Recipe =
-    (0 to i).foldLeft(this){ case (r,_) => r.next }
+    (0 until i).foldLeft(this){ case (r,_) => r.next }
 
   def toLeft(i: Int): Recipe =
-    (0 to i).foldLeft(this){ case (r,_) => r.prev }
+    (0 until i).foldLeft(this){ case (r,_) => r.prev }
 }
 
 object State {
@@ -31,9 +31,76 @@ object State {
     State(recipe1, recipe2, recipe1, recipe2, 2)
   }
 }
-case class State(elf1: Recipe, elf2: Recipe, beginning: Recipe, end: Recipe, size: Int)
+case class State(elf1: Recipe, elf2: Recipe, beginning: Recipe, end: Recipe, size: Int) {
+  def append(r: Int): State =
+    State(elf1, elf2, beginning, end.insertAfter(r), size + 1)
+
+  def step: State =
+    (elf1.data + elf2.data)
+      .toString
+      .map(_.toString.toInt)
+      .foldLeft(this) { case (s, r) => s.append(r) } // append new recipes
+      .copy(elf1 = elf1.toRight(elf1.data + 1), elf2 = elf2.toRight(elf2.data + 1))
+
+  def nAfterM(n: Int, m: Int): List[Int] = {
+    assert(n+m <= size)
+    Iterator.iterate(end.toLeft(size - m - 1))(_.toRight(1))
+      .take(n)
+      .map(_.data)
+      .toList
+  }
+
+  def lastN(n: Int): List[Int] = {
+    Iterator.iterate(end)(_.toLeft(1))
+      .take(n)
+      .map(_.data)
+      .toList
+      .reverse
+  }
+
+  override def toString: String = {
+    def recipeToString(r: Recipe) = {
+      val lsep = if (r eq elf1) "(" else if (r eq elf2) "[" else " "
+      val rsep = if (r eq elf1) ")" else if (r eq elf2) "]" else " "
+      s"$lsep${r.data}$rsep"
+    }
+    val most = Iterator.iterate(beginning)(_.next)
+      .takeWhile(_ ne end)
+      .map(recipeToString)
+      .mkString
+    (most + recipeToString(end)).trim
+  }
+
+  def toIterator: Iterator[Int] = {
+    Iterator.iterate(beginning)(_.next)
+      .takeWhile(_ ne end)
+      .map(_.data)
+  }
+}
 
 object Main {
   def main(args: Array[String]): Unit = {
+    println(s"ans1 = ${ans1(540391)._2}")
+    println(s"ans2 = ${ans2("540391")}")
+  }
+
+  def steps: Iterator[State] = Iterator.iterate(State.initialState)(_.step)
+
+  def ans1(numRecipes: Int): (State, String) = {
+    val finalState = steps
+      .dropWhile(_.size < numRecipes+10)
+      .next
+    val next10 = finalState.nAfterM(10, numRecipes).mkString
+    (finalState, next10)
+  }
+
+  // This is a terrible way to do it. There was apparently something wrong with my
+  // search algorithm, but it told me my guess was too high, so I'm just generating
+  // what I now know to be more than enough states, then searching through the
+  // resulting recipes for the match.
+  def ans2(scoresStr: String, max: Int = 30000000): Int = {
+    val scores = scoresStr.map(_.toString.toInt)
+    val lastState = steps.dropWhile(_.size<max).next
+    lastState.toIterator.sliding(scores.length).zipWithIndex.find(_._1==scores).get._2
   }
 }

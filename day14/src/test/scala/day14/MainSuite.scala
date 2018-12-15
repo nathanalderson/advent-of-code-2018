@@ -9,6 +9,18 @@ import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class MainSuite extends FunSuite with Matchers {
-  test("") {
+  test("step") {
+    State.initialState.step.toString should be ("(3)[7] 1  0")
+    State.initialState.step.step.toString should be ("3  7  1 [0](1) 0")
+  }
+
+  test("ans1") {
+    Main.ans1(9)._2 should be ("5158916779")
+    Main.ans1(2018)._2 should be ("5941429882")
+  }
+
+  test("ans2") {
+    Main.ans2("51589", 15) should be (9)
+    Main.ans2("59414", 3000) should be (2018)
   }
 }
