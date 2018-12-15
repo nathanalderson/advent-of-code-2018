@@ -38,7 +38,7 @@ case class State(elf1: Recipe, elf2: Recipe, beginning: Recipe, end: Recipe, siz
   def step: State =
     (elf1.data + elf2.data)
       .toString
-      .map(_.toString.toInt)
+      .map(_.asDigit)
       .foldLeft(this) { case (s, r) => s.append(r) } // append new recipes
       .copy(elf1 = elf1.toRight(elf1.data + 1), elf2 = elf2.toRight(elf2.data + 1))
 
