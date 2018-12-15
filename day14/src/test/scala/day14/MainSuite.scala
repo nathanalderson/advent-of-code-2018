@@ -20,7 +20,7 @@ class MainSuite extends FunSuite with Matchers {
   }
 
   test("ans2") {
-    Main.ans2("51589", 15) should be (9)
-    Main.ans2("59414", 3000) should be (2018)
+    Main.ans2("51589") should be (9)
+    Main.ans2("59414") should be (2018)
   }
 }

@@ -57,25 +57,6 @@ case class State(elf1: Recipe, elf2: Recipe, beginning: Recipe, end: Recipe, siz
       .toList
       .reverse
   }
-
-  override def toString: String = {
-    def recipeToString(r: Recipe) = {
-      val lsep = if (r eq elf1) "(" else if (r eq elf2) "[" else " "
-      val rsep = if (r eq elf1) ")" else if (r eq elf2) "]" else " "
-      s"$lsep${r.data}$rsep"
-    }
-    val most = Iterator.iterate(beginning)(_.next)
-      .takeWhile(_ ne end)
-      .map(recipeToString)
-      .mkString
-    (most + recipeToString(end)).trim
-  }
-
-  def toIterator: Iterator[Int] = {
-    Iterator.iterate(beginning)(_.next)
-      .takeWhile(_ ne end)
-      .map(_.data)
-  }
 }
 
 object Main {
@@ -94,13 +75,16 @@ object Main {
     (finalState, next10)
   }
 
-  // This is a terrible way to do it. There was apparently something wrong with my
-  // search algorithm, but it told me my guess was too high, so I'm just generating
-  // what I now know to be more than enough states, then searching through the
-  // resulting recipes for the match.
-  def ans2(scoresStr: String, max: Int = 30000000): Int = {
+  def ans2(scoresStr: String): Int = {
     val scores = scoresStr.map(_.toString.toInt)
-    val lastState = steps.dropWhile(_.size<max).next
-    lastState.toIterator.sliding(scores.length).zipWithIndex.find(_._1==scores).get._2
+    steps.map { state =>
+      val lastN = state.lastN(scores.length+1)
+      if (lastN.startsWith(scores))
+        (state, Some(state.size - scores.length - 1))
+      else if (lastN.endsWith(scores))
+        (state, Some(state.size - scores.length))
+      else
+        (state, None)
+    }.dropWhile(_._2.isEmpty).next._2.get
   }
 }
