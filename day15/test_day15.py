@@ -23,6 +23,15 @@ def grid3():
     .#.
     .E."""))
 
+@pytest.fixture
+def grid4():
+    return parse(dedent("""\
+    #######
+    #E..G.#
+    #...#.#
+    #.G.#G#
+    #######"""))
+
 def test_sort_points():
     points = [Point(1,1), Point(0,1), Point(1,0), Point(0,0)]
     assert sorted(points, key=sort_points) == [Point(0,0), Point(1,0), Point(0,1), Point(1,1)]
@@ -41,6 +50,39 @@ def test_distance_unreachable(grid3):
 
 def test_choose_next_step(grid1):
     assert choose_next_step(grid1, Point(1,0), Point(1,2)) == Point(0,0)
+    assert choose_next_step(grid1, Point(1,0), Point(2,0)) == Point(2,0)
 
 def test_choose_next_step_unreachable(grid3):
     assert choose_next_step(grid3, Point(0,0), Point(2,0)) == None
+
+def test_find_targets(grid4):
+    targets = find_targets(grid4, Unit(Grid.ELF,0,0))
+    assert sorted(targets.keys(), key=sort_points) == [Point(4,1), Point(2,3), Point(5,3)]
+
+def test_get_in_range(grid4):
+    targets = find_targets(grid4, Unit(Grid.ELF,0,0))
+    in_range = get_in_range(grid4, targets)
+    assert len(in_range) == 6
+    assert Point(3,1) in in_range
+
+def test_play_round(grid4):
+    all_done = play_round(grid4)
+    assert not all_done
+    assert str(grid4) == dedent("""\
+    #######
+    #.EG..#
+    #.G.#.#
+    #...#G#
+    #######
+    """)
+
+def test_ans1():
+    grid = parse(dedent("""\
+    #######
+    #.G...#
+    #...EG#
+    #.#.#G#
+    #..G#E#
+    #.....#
+    #######"""))
+    assert ans1(grid) == 36334

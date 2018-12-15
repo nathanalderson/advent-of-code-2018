@@ -2,8 +2,9 @@
 Several algorithms and datastructures from https://www.redblobgames.com/pathfinding/a-star/implementation.html
 """
 from collections import namedtuple
-from typing import Optional, List, Dict, Tuple, TypeVar, Generic
+from typing import Optional, Iterable, Set, List, Dict, Tuple, TypeVar, Generic
 import heapq
+import itertools
 
 Unit = namedtuple('Unit', 'type hp attack')
 
@@ -54,13 +55,19 @@ class Grid:
         # if (x + y) % 2 == 0: results.reverse() # aesthetics
         results = filter(self.in_bounds, results)
         results = filter(self.passable, results)
-        return results
+        return list(results)
 
     def __str__(self):
         def chars():
             for y in range(0, self.height):
                 for x in range(0, self.width):
-                    yield self.objects.get(Point(x,y), Grid.EMPTY)
+                    p = Point(x, y)
+                    if p in self.walls:
+                        yield '#'
+                    elif p in self.units:
+                        yield self.units[p].type
+                    else:
+                        yield Grid.EMPTY
                 yield '\n'
         return "".join(chars())
 
@@ -91,19 +98,27 @@ def distance(grid: Grid, start: Point, goal: Point) -> Optional[int]:
     came_from, cost_so_far = a_star_search(grid, start, goal)
     return cost_so_far.get(goal)
 
-def choose_next_step(grid: Grid, start: Point, goal: Point) -> Optional[Point]:
-    neighbor_dists = [(n, distance(grid, n, goal)) for n in grid.neighbors(start)]
+def nearest_of(grid: Grid, point: Point, points: Iterable[Point]) -> Optional[Point]:
+    dists = [(p, distance(grid, point, p)) for p in points]
     min_so_far = None
     mins = []
-    for n, dist in neighbor_dists:
+    for p, dist in dists:
         if dist and (min_so_far is None or dist <= min_so_far):
             min_so_far = dist
-            mins.append(n)
+            mins.append(p)
     if len(mins) > 0:
         mins.sort(key=sort_points)
         return mins[0]
     else:
         return None
+
+def choose_next_step(grid: Grid, start: Point, goal: Point) -> Optional[Point]:
+    neighbors = grid.neighbors(start)
+    # print("neighbors", neighbors)
+    if goal in neighbors:
+        return goal
+    else:
+        return nearest_of(grid, goal, neighbors)
 
 def parse(s: str) -> Grid:
     lines = s.splitlines()
@@ -118,15 +133,78 @@ def parse(s: str) -> Grid:
     return grid
 
 def get_play_order(grid: Grid) -> List[Point]:
-    return sorted((p for p,c in grid.objects.items() if (c==Grid.ELF or c==Grid.GOBLIN)), key=sort_points)
+    return sorted((p for p,c in grid.units.items()), key=sort_points)
 
-def round(grid: Grid) -> Grid:
+def find_targets(grid: Grid, unit: Unit) -> Dict[Point, Unit]:
+    # print("find_targets")
+    # print("    ", grid.units)
+    return {p: u for p, u in grid.units.items() if u.type != unit.type}
+
+def get_in_range(grid: Grid, targets: Dict[Point,Unit]) -> Set[Point]:
+    # print("get_in_range")
+    # print("    targets = ", targets)
+    neighbors = flatten(grid.neighbors(p) for p in targets.keys())
+    return set(neighbors)
+
+def flatten(l):
+    return list(itertools.chain.from_iterable(l))
+
+def play_round(grid: Grid) -> bool:
     play_order = get_play_order(grid)
+    all_done = False
+    while play_order:
+        pos = play_order.pop(0)
+        unit = grid.units.get(pos)
+        # print(f"~~~~~~ {pos} {unit}")
+        if not unit:
+            continue # it must've died since the start of the turn
+        targets = find_targets(grid, unit)
+        # print(f"targets: {targets}")
+        if not targets:
+            all_done = True
+            break
+        in_range = get_in_range(grid, targets)
+        # print(f"in range: {in_range}")
+        if pos not in in_range:
+            dest = nearest_of(grid, pos, in_range)
+            # print(f"dest: {dest}")
+            if dest:
+                next_step = choose_next_step(grid, pos, dest)
+                # print(f"next step: {next_step}")
+                # print(f"moving {unit.type} from {pos} to {next_step}")
+                del grid.units[pos]
+                grid.units[next_step] = unit
+                pos = next_step
+
+        if pos in in_range:
+            target_pos = sorted(targets.keys(), key=sort_points)[0]
+            # print(f"attacking {target_pos}")
+            target_unit = grid.units[target_pos]
+            updated_unit = Unit(target_unit.type, target_unit.hp-unit.attack, target_unit.attack)
+            if updated_unit.hp <= 0:
+                del grid.units[target_pos]
+            else:
+                grid.units[target_pos] = updated_unit
+    return all_done
+
+def get_total_hp(grid) -> int:
+    return sum(u.hp for u in grid.units.values())
+
+def ans1(grid: Grid) -> int:
+    for i in itertools.count():
+        all_done = play_round(grid)
+        if all_done:
+            break
+    complete_rounds = i
+    remaining_hp = get_total_hp(grid)
+    return complete_rounds * remaining_hp
 
 def main():
     with open("input.txt") as f:
         input = f.read()
     grid = parse(input)
+    print(f"ans1 = {ans1(grid)}")
+
 
 if __name__ == "__main__":
     main()
