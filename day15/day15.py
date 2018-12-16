@@ -97,15 +97,11 @@ def distance(grid: Grid, start: Point, goal: Point) -> Optional[int]:
 
 def nearest_of(grid: Grid, point: Point, points: Iterable[Point]) -> Optional[Point]:
     dists = [(p, distance(grid, point, p)) for p in points]
-    min_so_far = None
-    mins = []
-    for p, dist in dists:
-        if dist and (min_so_far is None or dist <= min_so_far):
-            min_so_far = dist
-            mins.append(p)
-    if len(mins) > 0:
-        mins.sort(key=sort_points)
-        return mins[0]
+    dists = [(p,d) for p,d in dists if d]
+    if dists:
+        min_dist = min(d for p,d in dists)
+        nearests = (p for p, d in dists if d == min_dist)
+        return sorted(nearests, key=sort_points)[0]
     else:
         return None
 
@@ -183,13 +179,14 @@ def play_round(grid: Grid) -> bool:
 
 # returns the new pos
 def move(grid: Grid, pos: Point, unit: Unit, targets: Dict[Point, Unit]) -> Point:
+    # print(f"move {unit.type} at {pos} targets: {targets.keys()}")
     in_range = get_in_range(grid, pos, targets)
     dest = nearest_of(grid, pos, in_range)
-    # print(f"dest: {dest}")
+    # print(f"  dest chosen: {dest}")
     if dest:
         next_step = choose_next_step(grid, pos, dest)
         # print(f"next step: {next_step}")
-        print(f"moving {unit.type} from {pos} to {next_step}")
+        # print(f"  next_step: {next_step}")
         del grid.units[pos]
         grid.units[next_step] = unit
         return next_step
@@ -201,9 +198,9 @@ def try_attack(grid, pos, unit) -> bool:
     if target_pos:
         target_unit = grid.units[target_pos]
         updated_unit = Unit(target_unit.type, target_unit.hp-unit.attack, target_unit.attack)
-        print(f"{pos} attacking {target_unit.type} at {target_pos}, hp now {updated_unit.hp}")
+        # print(f"{pos} attacking {target_unit.type} at {target_pos}, hp now {updated_unit.hp}")
         if updated_unit.hp <= 0:
-            print(f"unit died at {target_pos}")
+            # print(f"unit died at {target_pos}")
             del grid.units[target_pos]
         else:
             grid.units[target_pos] = updated_unit
@@ -221,7 +218,7 @@ def ans1(grid: Grid) -> int:
         print(grid)
         if all_done:
             break
-    complete_rounds = i
+    complete_rounds = i-1
     remaining_hp = get_total_hp(grid)
     return complete_rounds * remaining_hp
 
@@ -230,6 +227,7 @@ def main():
         input = f.read()
     grid = parse(input)
     print(f"ans1 = {ans1(grid)}")
+    # 209200 - too high
 
 
 if __name__ == "__main__":

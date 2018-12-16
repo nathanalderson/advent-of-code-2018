@@ -51,6 +51,15 @@ def test_distance_unreachable(grid3):
 def test_choose_next_step(grid1):
     assert choose_next_step(grid1, Point(1,0), Point(1,2)) == Point(0,0)
     assert choose_next_step(grid1, Point(1,0), Point(2,0)) == Point(2,0)
+    grid = parse(dedent("""\
+    #######
+    #...G.#
+    #..G.G#
+    #.#.#G#
+    #...#E#
+    #.....#
+    #######"""))
+    assert choose_next_step(grid, Point(3,2), Point(5,5)) == Point(3,3)
 
 def test_choose_next_step_unreachable(grid3):
     assert choose_next_step(grid3, Point(0,0), Point(2,0)) == None
@@ -90,4 +99,61 @@ def test_ans1():
     #..G#E#
     #.....#
     #######"""))
+    assert ans1(grid) == 27730
+
+def test_ans1_2():
+    grid = parse(dedent("""\
+    #######
+    #G..#E#
+    #E#E.E#
+    #G.##.#
+    #...#E#
+    #...E.#
+    #######"""))
     assert ans1(grid) == 36334
+
+def test_ans1_3():
+    grid = parse(dedent("""\
+    #########
+    #G......#
+    #.E.#...#
+    #..##..G#
+    #...##..#
+    #...#...#
+    #.G...G.#
+    #.....G.#
+    #########"""))
+    assert ans1(grid) == 18740
+
+def test_ans1_4():
+    grid = parse(dedent("""\
+    #######
+    #.E...#
+    #.#..G#
+    #.###.#
+    #E#G#G#
+    #...#G#
+    #######"""))
+    assert ans1(grid) == 28944
+
+def test_ans1_5():
+    grid = parse(dedent("""\
+    #######
+    #E.G#.#
+    #.#G..#
+    #G.#.G#
+    #G..#.#
+    #...E.#
+    #######"""))
+    assert ans1(grid) == 27755
+
+def test_ans1_6():
+    grid = parse(dedent("""\
+    #######
+    #E..EG#
+    #.#G.E#
+    #E.##E#
+    #G..#.#
+    #..E#.#
+    #######"""))
+    assert ans1(grid) == 39514
