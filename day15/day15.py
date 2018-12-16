@@ -49,13 +49,10 @@ class Grid:
     def cost(self, from_point, to_point):
         return 1
 
-    def neighbors(self, point):
+    def neighbors(self, point, allow=None):
         (x, y) = point
         results = [Point(x+1, y), Point(x, y-1), Point(x-1, y), Point(x, y+1)]
-        # if (x + y) % 2 == 0: results.reverse() # aesthetics
-        results = filter(self.in_bounds, results)
-        results = filter(self.passable, results)
-        return list(results)
+        return [p for p in results if p==allow or (self.in_bounds(p) and self.passable(p))]
 
     def __str__(self):
         def chars():
@@ -140,14 +137,27 @@ def find_targets(grid: Grid, unit: Unit) -> Dict[Point, Unit]:
     # print("    ", grid.units)
     return {p: u for p, u in grid.units.items() if u.type != unit.type}
 
-def get_in_range(grid: Grid, targets: Dict[Point,Unit]) -> Set[Point]:
+def get_in_range(grid: Grid, attackerPos: Point, targets: Dict[Point,Unit]) -> Set[Point]:
     # print("get_in_range")
     # print("    targets = ", targets)
-    neighbors = flatten(grid.neighbors(p) for p in targets.keys())
+    neighbors = flatten(grid.neighbors(p, allow=attackerPos) for p in targets.keys())
     return set(neighbors)
 
 def flatten(l):
     return list(itertools.chain.from_iterable(l))
+
+def choose_target(grid: Grid, pos: Point) -> Optional[Point]:
+    (x,y) = pos
+    attacker = grid.units[pos]
+    neighbors = [Point(x, y - 1), Point(x - 1, y), Point(x + 1, y), Point(x, y + 1)]
+    units = [(p,grid.units.get(p)) for p in neighbors]
+    units = [(p,u) for p,u in units if u and u.type != attacker.type]
+    if units:
+        min_hp = min(u.hp for p,u in units)
+        lowest_hp_locs = [p for p,u in units if u.hp == min_hp]
+        return sorted(lowest_hp_locs, key=sort_points)[0]
+    else:
+        return None
 
 def play_round(grid: Grid) -> bool:
     play_order = get_play_order(grid)
@@ -155,44 +165,60 @@ def play_round(grid: Grid) -> bool:
     while play_order:
         pos = play_order.pop(0)
         unit = grid.units.get(pos)
-        # print(f"~~~~~~ {pos} {unit}")
+        # print(f"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        # print(f"{pos} {unit}")
         if not unit:
             continue # it must've died since the start of the turn
         targets = find_targets(grid, unit)
         # print(f"targets: {targets}")
         if not targets:
+            # print(f"All done!")
             all_done = True
             break
-        in_range = get_in_range(grid, targets)
         # print(f"in range: {in_range}")
-        if pos not in in_range:
-            dest = nearest_of(grid, pos, in_range)
-            # print(f"dest: {dest}")
-            if dest:
-                next_step = choose_next_step(grid, pos, dest)
-                # print(f"next step: {next_step}")
-                # print(f"moving {unit.type} from {pos} to {next_step}")
-                del grid.units[pos]
-                grid.units[next_step] = unit
-                pos = next_step
-
-        if pos in in_range:
-            target_pos = sorted(targets.keys(), key=sort_points)[0]
-            # print(f"attacking {target_pos}")
-            target_unit = grid.units[target_pos]
-            updated_unit = Unit(target_unit.type, target_unit.hp-unit.attack, target_unit.attack)
-            if updated_unit.hp <= 0:
-                del grid.units[target_pos]
-            else:
-                grid.units[target_pos] = updated_unit
+        if not try_attack(grid, pos, unit):
+            pos = move(grid, pos, unit, targets)
+            try_attack(grid, pos, unit)
     return all_done
+
+# returns the new pos
+def move(grid: Grid, pos: Point, unit: Unit, targets: Dict[Point, Unit]) -> Point:
+    in_range = get_in_range(grid, pos, targets)
+    dest = nearest_of(grid, pos, in_range)
+    # print(f"dest: {dest}")
+    if dest:
+        next_step = choose_next_step(grid, pos, dest)
+        # print(f"next step: {next_step}")
+        print(f"moving {unit.type} from {pos} to {next_step}")
+        del grid.units[pos]
+        grid.units[next_step] = unit
+        return next_step
+    return pos
+
+# return true if something was attacked
+def try_attack(grid, pos, unit) -> bool:
+    target_pos = choose_target(grid, pos)
+    if target_pos:
+        target_unit = grid.units[target_pos]
+        updated_unit = Unit(target_unit.type, target_unit.hp-unit.attack, target_unit.attack)
+        print(f"{pos} attacking {target_unit.type} at {target_pos}, hp now {updated_unit.hp}")
+        if updated_unit.hp <= 0:
+            print(f"unit died at {target_pos}")
+            del grid.units[target_pos]
+        else:
+            grid.units[target_pos] = updated_unit
+        return True
+    else:
+        return False
 
 def get_total_hp(grid) -> int:
     return sum(u.hp for u in grid.units.values())
 
 def ans1(grid: Grid) -> int:
-    for i in itertools.count():
+    for i in itertools.count(1):
+        print(f"round {i}:")
         all_done = play_round(grid)
+        print(grid)
         if all_done:
             break
     complete_rounds = i
