@@ -48,6 +48,34 @@ object Main {
     println(s"samples: ${part1Input.length}")
     val ans1 = part1Input.map(candidateOpcodes).count(_.length >= 3)
     println(s"ans1 = $ans1")
+    ans2(part1Input)
+//    println(s"ans2 = $ans2")
+  }
+
+  def ans2(part1Input: List[Sample]): Unit = {
+    val sampleData = part1Input.map(s => s -> candidateOpcodes(s)).toMap
+    determineOpcodes(sampleData, Instruction.allOpcodes)
+  }
+
+  def determineOpcodes(sampleData: Map[Sample, List[Opcode]],
+                       unknown: List[Opcode],
+                       known: Map[Opcode, Int] = Map())
+    : Map[Opcode, Int] =
+  {
+    if (unknown.isEmpty)
+      known
+    else {
+      val newlyKnown = sampleData.filter(_._2.length == 1).map {
+        case (sample, List(opcode)) => (opcode, sample.instruction.opcodeNum)
+      }
+      val newSampleData = sampleData.filterNot(_._2.length == 1).mapValues(_.filterNot(newlyKnown.contains))
+      val newCandidates = unknown.filterNot(newlyKnown.contains)
+      val newKnown = known ++ newlyKnown
+      if (newlyKnown.nonEmpty)
+        determineOpcodes(newSampleData, newCandidates, newKnown)
+      else
+        throw new Exception("stuck")
+    }
   }
 
   def candidateOpcodes(sample: Sample): List[Opcode] =
