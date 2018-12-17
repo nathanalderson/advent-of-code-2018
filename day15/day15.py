@@ -7,9 +7,7 @@ import heapq
 import itertools
 
 Unit = namedtuple('Unit', 'type hp attack')
-
 Point = namedtuple('Point', 'x y')
-
 class ElfDeath(Exception): pass
 
 def sort_points(p: Point) -> Tuple[int, int]:
@@ -19,7 +17,7 @@ def sort_points(p: Point) -> Tuple[int, int]:
 T = TypeVar('T')
 class PriorityQueue(Generic[T]):
     def __init__(self):
-        self.elements: List[T] = []
+        self.elements = []
 
     def empty(self) -> int:
         return len(self.elements) == 0
@@ -39,8 +37,8 @@ class Grid:
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self.walls: Set[Point] = set()
-        self.units: Dict[Point, Unit] = {}
+        self.walls = set()
+        self.units = {}
 
     def in_bounds(self, point):
         (x, y) = point
@@ -85,8 +83,8 @@ def heuristic(a, b):
 def a_star_search(graph, start, goal):
     frontier = PriorityQueue()
     frontier.put(start, 0)
-    came_from: Dict[Point, Optional[Point]] = {start: None}
-    cost_so_far: Dict[Point, int] = {start: 0}
+    came_from = {start: None}
+    cost_so_far = {start: 0}
     while not frontier.empty():
         current = frontier.get()
         if current == goal:
@@ -116,7 +114,6 @@ def nearest_of(grid: Grid, point: Point, points: Iterable[Point]) -> Optional[Po
 
 def choose_next_step(grid: Grid, start: Point, goal: Point) -> Optional[Point]:
     neighbors = grid.neighbors(start)
-    # print("neighbors", neighbors)
     if goal in neighbors:
         return goal
     else:
@@ -140,13 +137,9 @@ def get_play_order(grid: Grid) -> List[Point]:
     return sorted((p for p,c in grid.units.items()), key=sort_points)
 
 def find_targets(grid: Grid, unit: Unit) -> Dict[Point, Unit]:
-    # print("find_targets")
-    # print("    ", grid.units)
     return {p: u for p, u in grid.units.items() if u.type != unit.type}
 
 def get_in_range(grid: Grid, attackerPos: Point, targets: Dict[Point,Unit]) -> Set[Point]:
-    # print("get_in_range")
-    # print("    targets = ", targets)
     neighbors = flatten(grid.neighbors(p, allow=attackerPos) for p in targets.keys())
     return set(neighbors)
 
@@ -172,15 +165,10 @@ def play_round(grid: Grid, elf_deaths_allowed: bool = True) -> bool:
     while play_order:
         pos = play_order.pop(0)
         unit = grid.units.get(pos)
-        # print(f"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        # print(f"{pos} {unit}")
         targets = find_targets(grid, unit)
-        # print(f"targets: {targets}")
         if not targets:
-            # print(f"All done!")
             all_done = True
             break
-        # print(f"in range: {in_range}")
         if not try_attack(grid, pos, unit, play_order, elf_deaths_allowed):
             pos = move(grid, pos, unit, targets)
             try_attack(grid, pos, unit, play_order, elf_deaths_allowed)
@@ -188,14 +176,10 @@ def play_round(grid: Grid, elf_deaths_allowed: bool = True) -> bool:
 
 # returns the new pos
 def move(grid: Grid, pos: Point, unit: Unit, targets: Dict[Point, Unit]) -> Point:
-    # print(f"move {unit.type} at {pos} targets: {targets.keys()}")
     in_range = get_in_range(grid, pos, targets)
     dest = nearest_of(grid, pos, in_range)
-    # print(f"  dest chosen: {dest}")
     if dest:
         next_step = choose_next_step(grid, pos, dest)
-        # print(f"next step: {next_step}")
-        # print(f"  next_step: {next_step}")
         del grid.units[pos]
         grid.units[next_step] = unit
         # print(f"move {unit.type} at {pos} to {next_step}")
@@ -210,7 +194,7 @@ def try_attack(grid, pos, unit, play_order, elf_deaths_allowed) -> bool:
         updated_unit = Unit(target_unit.type, target_unit.hp-unit.attack, target_unit.attack)
         # print(f"{pos} attacking {target_unit.type} at {target_pos}, hp now {updated_unit.hp}")
         if updated_unit.hp <= 0:
-            # print(f"unit died at {target_pos}")
+            # print(f"{updated_unit.type} died at {target_pos}")
             if updated_unit.type == Grid.ELF and not elf_deaths_allowed:
                 raise ElfDeath
             del grid.units[target_pos]
@@ -227,10 +211,10 @@ def try_attack(grid, pos, unit, play_order, elf_deaths_allowed) -> bool:
 def get_total_hp(grid) -> int:
     return sum(u.hp for u in grid.units.values())
 
-def ans1(grid: Grid) -> int:
+def ans1(grid: Grid, elf_deaths_allowed: bool = True) -> int:
     for i in itertools.count(1):
         # print(f"round {i}:")
-        all_done = play_round(grid)
+        all_done = play_round(grid, elf_deaths_allowed)
         # print(grid)
         if all_done:
             break
@@ -240,31 +224,28 @@ def ans1(grid: Grid) -> int:
     # print(f"remaining hp: {remaining_hp}")
     return complete_rounds * remaining_hp
 
-def ans2(input: str) -> int:
-    needed_power = 0
-    for elf_power in itertools.count(20):
-        print(f"trying power {elf_power}")
+def ans2(input: str, starting_power: int) -> int:
+    started_too_high = True
+    for elf_power in itertools.count(starting_power):
         grid = parse(input, elf_power)
-        done = False
-        while not done:
-            # print(f"round {i}:")
-            try:
-                all_done = play_round(grid, elf_deaths_allowed=False)
-            except ElfDeath:
-                break
-            # print(grid)
-            if all_done:
-                done = True
-                needed_power = elf_power
-                break
-    return needed_power
+        try:
+            outcome = ans1(grid, elf_deaths_allowed=False)
+        except ElfDeath:
+            started_too_high = False
+            continue
+        else:
+            break
+    if started_too_high:
+        raise Exception("ans2 starting power was too high")
+    else:
+        return outcome
 
 def main():
     with open("input.txt") as f:
         input = f.read()
     grid = parse(input)
     print(f"ans1 = {ans1(grid)}")
-    # print(f"ans2 = {ans2(input)}")
+    print(f"ans2 = {ans2(input, 4)}")
 
 if __name__ == "__main__":
     main()
