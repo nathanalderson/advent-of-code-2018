@@ -9,6 +9,22 @@ import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class MainSuite extends FunSuite with Matchers {
-  test("") {
+  val board = Main.parse("""x=495, y=2..7
+                           |y=7, x=495..501
+                           |x=501, y=3..7
+                           |x=498, y=2..4
+                           |x=506, y=1..2
+                           |x=498, y=10..13
+                           |x=504, y=10..13
+                           |y=13, x=498..504""".stripMargin.lines.toList)
+
+  test("lowestReachable") {
+    Main.lowestReachables(board ++ List(Point(500,10)->Reachable, Point(501,10)->Reachable)) should
+      contain theSameElementsAs List(Point(500,10), Point(501, 10))
+  }
+
+  test("drip") {
+    Main.drip(board).filter(_._2 == Reachable).keys should
+      contain theSameElementsAs (0 to 6).map(Point(500,_))
   }
 }
