@@ -40,39 +40,37 @@ case class Sample(before: Main.Regs, after: Main.Regs, instruction: Instruction)
 
 object Main {
   type Regs = List[Int]
-  def mkRegs(r0: Int, r1: Int, r2: Int, r3: Int): Regs = List(r0, r1, r2, r3)
 
   def main(args: Array[String]): Unit = {
     val input = Source.fromFile("input.txt").getLines().toList
-    val part1Input = parsePart1(input)
-    println(s"samples: ${part1Input.length}")
+    val (part1Input, part2Input) = parse(input)
     val ans1 = part1Input.map(candidateOpcodes).count(_.length >= 3)
     println(s"ans1 = $ans1")
-    ans2(part1Input)
-//    println(s"ans2 = $ans2")
+    println(s"ans2 = ${ans2(part1Input, part2Input).head}")
   }
 
-  def ans2(part1Input: List[Sample]): Unit = {
+  def ans2(part1Input: List[Sample], part2Input: List[Instruction]): Regs = {
     val sampleData = part1Input.map(s => s -> candidateOpcodes(s)).toMap
-    determineOpcodes(sampleData, Instruction.allOpcodes)
+    val opcodeMapping = determineOpcodes(sampleData, Instruction.allOpcodes)
+    part2Input.foldLeft(List(0,0,0,0)) {
+      case (regs, inst) => opcodeMapping(inst.opcodeNum)(regs, inst.a, inst.b, inst.c)
+    }
   }
 
   def determineOpcodes(sampleData: Map[Sample, List[Opcode]],
                        unknown: List[Opcode],
                        known: Map[Opcode, Int] = Map())
-    : Map[Opcode, Int] =
+    : Map[Int, Opcode] =
   {
     if (unknown.isEmpty)
-      known
+      known.map{ x => x._2 -> x._1 } // flip keys/vals
     else {
       val newlyKnown = sampleData.filter(_._2.length == 1).map {
         case (sample, List(opcode)) => (opcode, sample.instruction.opcodeNum)
       }
       val newSampleData = sampleData.filterNot(_._2.length == 1).mapValues(_.filterNot(newlyKnown.contains))
-      val newCandidates = unknown.filterNot(newlyKnown.contains)
-      val newKnown = known ++ newlyKnown
       if (newlyKnown.nonEmpty)
-        determineOpcodes(newSampleData, newCandidates, newKnown)
+        determineOpcodes(newSampleData, unknown.filterNot(newlyKnown.contains), known ++ newlyKnown)
       else
         throw new Exception("stuck")
     }
@@ -84,22 +82,29 @@ object Main {
       op(sample.before, inst.a, inst.b, inst.c) == sample.after
     }
 
-  def parsePart1(input: Seq[String]): List[Sample] = {
+  def parse(input: Seq[String]): (List[Sample], List[Instruction]) = {
+    val break = input.indexOfSlice(List("", "", ""))
+    val (part1, part2) = input.splitAt(break)
     val reBefore = raw"Before: \[(\d+), (\d+), (\d+), (\d+)\]".r
     val reAfter = raw"After:  \[(\d+), (\d+), (\d+), (\d+)\]".r
     val reInstruction = raw"(\d+) (\d+) (\d+) (\d+)".r
-    val befores = input.flatMap {
-      case reBefore(r0, r1, r2, r3) => Some(mkRegs(r0.toInt, r1.toInt, r2.toInt, r3.toInt))
+    val befores = part1.flatMap {
+      case reBefore(r0, r1, r2, r3) => Some(List(r0.toInt, r1.toInt, r2.toInt, r3.toInt))
       case _ => None
     }
-    val afters = input.flatMap {
-      case reAfter(r0, r1, r2, r3) => Some(mkRegs(r0.toInt, r1.toInt, r2.toInt, r3.toInt))
+    val afters = part1.flatMap {
+      case reAfter(r0, r1, r2, r3) => Some(List(r0.toInt, r1.toInt, r2.toInt, r3.toInt))
       case _ => None
     }
-    val instructions = input.flatMap {
+    val instructions = part1.flatMap {
       case reInstruction(r0, r1, r2, r3) => Some(Instruction(r0.toInt, r1.toInt, r2.toInt, r3.toInt))
       case _ => None
     }
-    befores.zip(afters).zip(instructions).map { case ((b,a),i) => Sample(b,a,i) }.toList
+    val samples = befores.zip(afters).zip(instructions).map { case ((b,a),i) => Sample(b,a,i) }.toList
+    val program = part2.flatMap {
+      case reInstruction(r0, r1, r2, r3) => Some(Instruction(r0.toInt, r1.toInt, r2.toInt, r3.toInt))
+      case _ => None
+    }.toList
+    (samples, program)
   }
 }
