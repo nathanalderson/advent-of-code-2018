@@ -9,6 +9,9 @@ import itertools
 Unit = namedtuple('Unit', 'type hp attack')
 
 Point = namedtuple('Point', 'x y')
+
+class ElfDeath(Exception): pass
+
 def sort_points(p: Point) -> Tuple[int, int]:
     """sort points in reading order"""
     return (p.y, p.x)
@@ -60,11 +63,17 @@ class Grid:
                 for x in range(0, self.width):
                     p = Point(x, y)
                     if p in self.walls:
-                        yield '#'
+                        yield Grid.WALL
                     elif p in self.units:
                         yield self.units[p].type
                     else:
                         yield Grid.EMPTY
+                yield "   "
+                for x in range(0, self.width):
+                    p = Point(x, y)
+                    if p in self.units:
+                        unit = self.units[p]
+                        yield f"{unit.type}({unit.hp}) "
                 yield '\n'
         return "".join(chars())
 
@@ -113,7 +122,7 @@ def choose_next_step(grid: Grid, start: Point, goal: Point) -> Optional[Point]:
     else:
         return nearest_of(grid, goal, neighbors)
 
-def parse(s: str) -> Grid:
+def parse(s: str, elf_power: int = 3) -> Grid:
     lines = s.splitlines()
     height, width = len(lines), len(lines[0])
     grid = Grid(width, height)
@@ -121,8 +130,10 @@ def parse(s: str) -> Grid:
         for x,c in enumerate(line):
             if c == Grid.WALL:
                 grid.walls.add(Point(x,y))
-            elif c == Grid.GOBLIN or c == Grid.ELF:
+            elif c == Grid.GOBLIN:
                 grid.units[Point(x,y)] = Unit(c, 200, 3)
+            elif c == Grid.ELF:
+                grid.units[Point(x,y)] = Unit(c, 200, elf_power)
     return grid
 
 def get_play_order(grid: Grid) -> List[Point]:
@@ -155,7 +166,7 @@ def choose_target(grid: Grid, pos: Point) -> Optional[Point]:
     else:
         return None
 
-def play_round(grid: Grid) -> bool:
+def play_round(grid: Grid, elf_deaths_allowed: bool = True) -> bool:
     play_order = get_play_order(grid)
     all_done = False
     while play_order:
@@ -163,8 +174,6 @@ def play_round(grid: Grid) -> bool:
         unit = grid.units.get(pos)
         # print(f"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         # print(f"{pos} {unit}")
-        if not unit:
-            continue # it must've died since the start of the turn
         targets = find_targets(grid, unit)
         # print(f"targets: {targets}")
         if not targets:
@@ -172,9 +181,9 @@ def play_round(grid: Grid) -> bool:
             all_done = True
             break
         # print(f"in range: {in_range}")
-        if not try_attack(grid, pos, unit):
+        if not try_attack(grid, pos, unit, play_order, elf_deaths_allowed):
             pos = move(grid, pos, unit, targets)
-            try_attack(grid, pos, unit)
+            try_attack(grid, pos, unit, play_order, elf_deaths_allowed)
     return all_done
 
 # returns the new pos
@@ -189,11 +198,12 @@ def move(grid: Grid, pos: Point, unit: Unit, targets: Dict[Point, Unit]) -> Poin
         # print(f"  next_step: {next_step}")
         del grid.units[pos]
         grid.units[next_step] = unit
+        # print(f"move {unit.type} at {pos} to {next_step}")
         return next_step
     return pos
 
 # return true if something was attacked
-def try_attack(grid, pos, unit) -> bool:
+def try_attack(grid, pos, unit, play_order, elf_deaths_allowed) -> bool:
     target_pos = choose_target(grid, pos)
     if target_pos:
         target_unit = grid.units[target_pos]
@@ -201,7 +211,13 @@ def try_attack(grid, pos, unit) -> bool:
         # print(f"{pos} attacking {target_unit.type} at {target_pos}, hp now {updated_unit.hp}")
         if updated_unit.hp <= 0:
             # print(f"unit died at {target_pos}")
+            if updated_unit.type == Grid.ELF and not elf_deaths_allowed:
+                raise ElfDeath
             del grid.units[target_pos]
+            try:
+                play_order.remove(target_pos)
+            except ValueError:
+                pass
         else:
             grid.units[target_pos] = updated_unit
         return True
@@ -213,22 +229,42 @@ def get_total_hp(grid) -> int:
 
 def ans1(grid: Grid) -> int:
     for i in itertools.count(1):
-        print(f"round {i}:")
+        # print(f"round {i}:")
         all_done = play_round(grid)
-        print(grid)
+        # print(grid)
         if all_done:
             break
     complete_rounds = i-1
     remaining_hp = get_total_hp(grid)
+    # print(f"complete rounds: {complete_rounds}")
+    # print(f"remaining hp: {remaining_hp}")
     return complete_rounds * remaining_hp
+
+def ans2(input: str) -> int:
+    needed_power = 0
+    for elf_power in itertools.count(20):
+        print(f"trying power {elf_power}")
+        grid = parse(input, elf_power)
+        done = False
+        while not done:
+            # print(f"round {i}:")
+            try:
+                all_done = play_round(grid, elf_deaths_allowed=False)
+            except ElfDeath:
+                break
+            # print(grid)
+            if all_done:
+                done = True
+                needed_power = elf_power
+                break
+    return needed_power
 
 def main():
     with open("input.txt") as f:
         input = f.read()
     grid = parse(input)
     print(f"ans1 = {ans1(grid)}")
-    # 209200 - too high
-
+    # print(f"ans2 = {ans2(input)}")
 
 if __name__ == "__main__":
     main()

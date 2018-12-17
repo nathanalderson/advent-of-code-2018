@@ -74,22 +74,6 @@ def test_get_in_range(grid4):
     assert len(in_range) == 6
     assert Point(3,1) in in_range
 
-# def test_get_in_range2():
-#     targets = {Point(x=5, y=2): Unit(type='G', hp=200, attack=3), Point(x=5, y=3): Unit(type='G', hp=200, attack=3), Point(x=3, y=4): Unit(type='G', hp=200, attack=3), Point(x=3, y=1): Unit(type='G', hp=200, attack=3)}
-#     in_range = get_in_range(targets)
-#     assert Point(3,2) not in in_range
-
-def test_play_round(grid4):
-    all_done = play_round(grid4)
-    assert not all_done
-    assert str(grid4) == dedent("""\
-    #######
-    #.EG..#
-    #.G.#.#
-    #...#G#
-    #######
-    """)
-
 def test_ans1():
     grid = parse(dedent("""\
     #######
