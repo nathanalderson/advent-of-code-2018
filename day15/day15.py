@@ -245,7 +245,7 @@ def main():
         input = f.read()
     grid = parse(input)
     print(f"ans1 = {ans1(grid)}")
-    print(f"ans2 = {ans2(input, 4)}")
+    print(f"ans2 = {ans2(input, 22)}")
 
 if __name__ == "__main__":
     main()
