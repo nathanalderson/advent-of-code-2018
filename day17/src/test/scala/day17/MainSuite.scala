@@ -91,22 +91,22 @@ class MainSuite extends FunSuite with Matchers {
                      |#############""".stripMargin)
   }
 
-  test("bucket-in-bucket spread") {
-    val intermediateBoard = Main.drip(Main.spread(Main.drip(bucketInBucketBoard)))
-    println("*****************************************")
-    val finalBoard = Main.spread(intermediateBoard)
-    val str = Main.toString(finalBoard)
-    println(str)
-    str should be ("""......|......
-                     |.#....|......
-                     |.#./|||||/.#.
-                     |.#~~#~~~#~~#.
-                     |.#~~#~~~#~~#.
-                     |.#~~#####~~#.
-                     |.#~~~~~~~~~#.
-                     |.###########.
-                     |.............
-                     |#############""".stripMargin)
-  }
+//  test("bucket-in-bucket spread") {
+//    val intermediateBoard = Main.drip(Main.spread(Main.drip(bucketInBucketBoard)))
+//    println("*****************************************")
+//    val finalBoard = Main.spread(intermediateBoard)
+//    val str = Main.toString(finalBoard)
+//    println(str)
+//    str should be ("""......|......
+//                     |.#....|......
+//                     |.#./|||||/.#.
+//                     |.#~~#~~~#~~#.
+//                     |.#~~#~~~#~~#.
+//                     |.#~~#####~~#.
+//                     |.#~~~~~~~~~#.
+//                     |.###########.
+//                     |.............
+//                     |#############""".stripMargin)
+//  }
 
 }

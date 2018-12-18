@@ -7,11 +7,15 @@ case class Point(x: Int, y: Int)
 sealed trait Content
 case object Clay extends Content
 case object Reachable extends Content
-case object NewReachable extends Content
 case object Water extends Content
+
 
 object Main {
   type Board = Map[Point, Content]
+  type WorkQueue = Vector[Work]
+  type WorkFunction = (Board, Point) => (Board, List[Work])
+
+  case class Work(p: Point, f: WorkFunction)
 
   def main(args: Array[String]): Unit = {
     val input = Source.fromFile("input.txt").getLines.toList
@@ -23,11 +27,11 @@ object Main {
 
   def countWaters(board: Board): Int = {
     val bounds = getBounds(board)
-    val waters = board.filter { case (p, c) => (c == Water || c == Reachable || c == NewReachable) && inbounds(bounds)(p) }
+    val waters = board.filter { case (p, c) => (c == Water || c == Reachable || c == Reachable) && inbounds(bounds)(p) }
     waters.size - 1 // -1 for the spring
   }
 
-  def run(board: Board): Board = {
+  def run(board: Board, workQueue: WorkQueue): Board = {
     val lastBoard = Iterator.iterate(board)(round)
       .sliding(2)
       .dropWhile { case Seq(b1, b2) => b1 != b2 }
@@ -45,45 +49,36 @@ object Main {
     input.flatMap {
       case reYrange(x,yrange1,yrange2) => (yrange1.toInt to yrange2.toInt).map(Point(x.toInt,_))
       case reXrange(y,xrange1,xrange2) => (xrange1.toInt to xrange2.toInt).map(Point(_,y.toInt))
-    }.map(_->Clay).toMap.updated(Point(500,0), NewReachable)
+    }.map(_->Clay).toMap.updated(Point(500,0), Reachable)
   }
 
-  def drip(board: Board): Board = {
-    val (newBoard, newReachables) = getNewlyReachable(board)
-    newReachables.foldLeft(newBoard) {
-      case (b, p) =>
-        val (ul, lr) = getBounds(b)
-        val pointsToFloor = (p.y+1 to lr.y).map(Point(p.x, _)).takeWhile(p => !b.contains(p))
-        b ++ pointsToFloor.map(_ -> NewReachable)
-    }.map {
-      case (p, Reachable) if board.get(below(p)).contains(Water) => p -> NewReachable
-      case other => other
-    }
+  val drip: WorkFunction = (board, point) => {
+    val (ul, lr) = getBounds(board)
+    val pointsToFloor = (point.y+1 to lr.y).map(Point(point.x, _)).takeWhile(p => !board.contains(p))
+    val newBoard = board ++ pointsToFloor.map(_ -> Reachable)
+    val newWork = pointsToFloor.lastOption.map(Work(_, spread)).toList
+    (newBoard, newWork)
   }
 
-  def spread(board: Board): Board = {
-    val (newBoard, newReachables) = getNewlyReachable(board)
-    newReachables.foldLeft(newBoard) {
-      case (b, p) =>
-        val (newBoard, toLeft, toRight, fillWith) = followFloor(p, b) match {
-          case (Right(l), Right(r)) => // walls on either side means water
-            val renewReachables = (l++r).map(above).filter(p => b.get(p).contains(Reachable))
-            println(renewReachables)
-            val newB = b ++ renewReachables.map(_ -> NewReachable)
-            (newB, l, r, Water)
-          case (Left(l), Right(r)) => (b, l, r, NewReachable) // all others means reachable
-          case (Right(l), Left(r)) => (b, l, r, NewReachable)
-          case (Left(l), Left(r)) => (b, l, r, NewReachable)
-        }
-        newBoard ++ (toLeft ++ toRight).map(_ -> fillWith)
+  val spread: WorkFunction = (board, point) => {
+    val (fillPoints, fillWith, newWork) = followFloor(point, board) match {
+      case (Right(l), Right(r)) => // walls on either side means water
+        val respreads = (l++r).map(above).filter(p => board.get(p).contains(Reachable))
+        println(s"respreads: $respreads")
+        (l++r, Water, respreads.map(Work(_, spread)))
+      case (Left(l), Right(r)) => (l++r, Reachable, l.headOption.toList.map(Work(_, drip))) // all others means reachable
+      case (Right(l), Left(r)) => (l++r, Reachable, r.lastOption.toList.map(Work(_, drip)))
+      case (Left(l), Left(r)) => (l++r, Reachable, (l.headOption.toList++r.lastOption.toList).map(Work(_, drip)))
     }
+    val newBoard = board ++ fillPoints.map(_ -> fillWith)
+    (newBoard, newWork)
   }
 
   def getNewlyReachable(board: Board, convertToReachable: Boolean = true): (Board, List[Point]) = {
-    val newReachables = board.filter(_._2 == NewReachable).keys.toList.sortBy(_.y * -1)
+    val newReachables = board.filter(_._2 == Reachable).keys.toList.sortBy(_.y * -1)
     val newBoard = if (convertToReachable)
       board.mapValues {
-        case NewReachable => Reachable
+        case Reachable => Reachable
         case other => other
       }
     else board
@@ -142,7 +137,7 @@ object Main {
       val row = for (x <- ul.x to lr.x) yield {
         board.get(Point(x,y)) match {
           case Some(Clay) => "#"
-          case Some(NewReachable) => "/"
+          case Some(Reachable) => "/"
           case Some(Reachable) => "|"
           case Some(Water) => "~"
           case None => "."
