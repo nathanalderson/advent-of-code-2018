@@ -18,13 +18,95 @@ class MainSuite extends FunSuite with Matchers {
                            |x=504, y=10..13
                            |y=13, x=498..504""".stripMargin.lines.toList)
 
-  test("lowestReachable") {
-    Main.lowestReachables(board ++ List(Point(500,10)->Reachable, Point(501,10)->Reachable)) should
-      contain theSameElementsAs List(Point(500,10), Point(501, 10))
+  val bucketInBucketBoard = Main.parse("""x=495, y=1..7
+                                         |y=7, x=495..505
+                                         |x=505, y=2..7
+                                         |x=498, y=3..5
+                                         |x=502, y=3..5
+                                         |y=5, x=498..502
+                                         |y=9, x=494..506
+                                         |""".stripMargin.lines.toList)
+
+//  test("drip") {
+//    Main.drip(board).filter(_._2 == NewReachable).keys should
+//      contain theSameElementsAs (1 to 6).map(Point(500,_))
+//    Main.drip(board.updated(Point(505,0), NewReachable)).filter(_._2 == NewReachable).keys should
+//      contain theSameElementsAs (1 to 6).map(Point(500,_)) ++ (1 to 13).map(Point(505,_))
+//  }
+
+//  test("spread") {
+//    val dripped = Main.drip(board)
+//    val str = Main.toString(Main.spread(dripped))
+//    str should be (""".....|......
+//                     |.....|.....#
+//                     |#..#////...#
+//                     |#..#~~#.....
+//                     |#..#~~#.....
+//                     |#~~~~~#.....
+//                     |#~~~~~#.....
+//                     |#######.....
+//                     |............
+//                     |............
+//                     |...#.....#..
+//                     |...#.....#..
+//                     |...#.....#..
+//                     |...#######..""".stripMargin)
+//  }
+
+  test("run") {
+    val str = Main.toString(Main.run(board))
+    println(str)
+    str should be (""".....|......
+                     |.....|.....#
+                     |#..#||||...#
+                     |#..#~~#|....
+                     |#..#~~#|....
+                     |#~~~~~#|....
+                     |#~~~~~#|....
+                     |#######|....
+                     |.......|....
+                     |..|||||||||.
+                     |..|#~~~~~#|.
+                     |..|#~~~~~#|.
+                     |..|#~~~~~#|.
+                     |..|#######|.""".stripMargin)
   }
 
-  test("drip") {
-    Main.drip(board).filter(_._2 == Reachable).keys should
-      contain theSameElementsAs (0 to 6).map(Point(500,_))
+  test("countWaters") {
+    Main.countWaters(Main.run(board)) should be (57)
   }
+
+  test("bucket-in-bucket run") {
+    val str = Main.toString(Main.run(bucketInBucketBoard))
+    println(str)
+    str should be ("""......|......
+                     |.#|||||||||||
+                     |.#~~~~~~~~~#|
+                     |.#~~#~~~#~~#|
+                     |.#~~#~~~#~~#|
+                     |.#~~#####~~#|
+                     |.#~~~~~~~~~#|
+                     |.###########|
+                     ||||||||||||||
+                     |#############""".stripMargin)
+  }
+
+  test("bucket-in-bucket spread") {
+    val intermediateBoard = Main.drip(Main.spread(Main.drip(bucketInBucketBoard)))
+    println("*****************************************")
+    val finalBoard = Main.spread(intermediateBoard)
+    val str = Main.toString(finalBoard)
+    println(str)
+    str should be ("""......|......
+                     |.#....|......
+                     |.#./|||||/.#.
+                     |.#~~#~~~#~~#.
+                     |.#~~#~~~#~~#.
+                     |.#~~#####~~#.
+                     |.#~~~~~~~~~#.
+                     |.###########.
+                     |.............
+                     |#############""".stripMargin)
+  }
+
 }
