@@ -28,7 +28,7 @@ object Main {
     val board = parse(input)
     val ans1 = countWaters(run(board))
     println(s"ans1 = $ans1")
-    // 348 - too low
+    // 33351 - too low
   }
 
   def countWaters(board: Board): Int = {
@@ -36,21 +36,27 @@ object Main {
     board.count{ case (p, c) => (c == Water || c == Reachable) && inbounds(bounds)(p) }
   }
 
+  def log(board: Board, workQueue: WorkQueue, seconds: Int = 1): Unit = {
+    val queue = toString(workQueue)
+    println(queue)
+    val now = System.currentTimeMillis() / 1000
+//    if (now%seconds==0) {
+      val writer = new BufferedWriter(new FileWriter(new File(s"out/$now.txt")))
+      writer.write(queue)
+      writer.write(toString(board, " "))
+      writer.close()
+//    }
+  }
+
   @tailrec
   def run(board: Board, workQueue: WorkQueue = Vector(spring)): Board = {
-//    println(s"***** workQueue: ${workQueue.size}")
-    val now = Calendar.getInstance().get(Calendar.SECOND)
-    if (now%10==0) {
-      val writer = new BufferedWriter(new FileWriter(new File(s"out/$now.txt")))
-      writer.write(toString(workQueue))
-      writer.write(toString(board, ' '))
-      writer.close()
-    }
     workQueue.headOption match {
       case Some(Work(point, f)) =>
         val (newBoard, newWork) = f(board, point)
         run(newBoard, workQueue.drop(1) ++ newWork)
-      case None => board
+      case None =>
+        log(board, workQueue)
+        board
     }
   }
 
@@ -64,7 +70,7 @@ object Main {
   }
 
   val drip: WorkFunction = (board, point) => {
-    if(!board.get(point).contains(Reachable)) {
+    if(!board.get(point).contains(Reachable) && point != Point(500,0)) {
       (board, List())
     } else {
       val (ul, lr) = getBounds(board)
