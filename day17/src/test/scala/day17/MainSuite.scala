@@ -56,8 +56,7 @@ class MainSuite extends FunSuite with Matchers {
   test("run") {
     val str = Main.toString(Main.run(board))
     println(str)
-    str should be (""".....|......
-                     |.....|.....#
+    str should be (""".....|.....#
                      |#..#||||...#
                      |#..#~~#|....
                      |#..#~~#|....
@@ -79,8 +78,7 @@ class MainSuite extends FunSuite with Matchers {
   test("bucket-in-bucket run") {
     val str = Main.toString(Main.run(bucketInBucketBoard))
     println(str)
-    str should be ("""......|......
-                     |.#|||||||||||
+    str should be (""".#|||||||||||
                      |.#~~~~~~~~~#|
                      |.#~~#~~~#~~#|
                      |.#~~#~~~#~~#|
