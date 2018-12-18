@@ -1,8 +1,5 @@
 package day17
 
-import java.io.{BufferedWriter, File, FileWriter}
-import java.util.Calendar
-
 import scala.annotation.tailrec
 import scala.io.Source
 
@@ -13,7 +10,6 @@ case object Clay extends Content
 case object Reachable extends Content
 case object Water extends Content
 
-
 object Main {
   type Board = Map[Point, Content]
   type WorkQueue = Vector[Work]
@@ -21,44 +17,29 @@ object Main {
 
   case class Work(p: Point, f: WorkFunction)
 
-  lazy val spring = Work(Point(500,0), drip)
-
   def main(args: Array[String]): Unit = {
     val input = Source.fromFile("input.txt").getLines.toList
     val board = parse(input)
-    val ans1 = countWaters(run(board))
+    val (ul, _) = getBounds(board)
+    val lastBoard = run(board)
+    val ans1 = lastBoard.count { case (p, c) => p.y >= ul.y && (c == Water || c == Reachable) }
     println(s"ans1 = $ans1")
-    // 33351 - too low
+    val ans2 = lastBoard.count { case (p, c) => p.y >= ul.y && c == Water }
+    println(s"ans2 = $ans2")
   }
 
-  def countWaters(board: Board): Int = {
-    val bounds = getBounds(board)
-    board.count{ case (p, c) => (c == Water || c == Reachable) && inbounds(bounds)(p) }
-  }
-
-  def log(board: Board, workQueue: WorkQueue, seconds: Int = 1): Unit = {
-    val queue = toString(workQueue)
-    println(queue)
-    val now = System.currentTimeMillis() / 1000
-//    if (now%seconds==0) {
-      val writer = new BufferedWriter(new FileWriter(new File(s"out/$now.txt")))
-      writer.write(queue)
-      writer.write(toString(board, " "))
-      writer.close()
-//    }
-  }
+  def run(board: Board): Board =
+    run(board.updated(Point(500, 0), Reachable), Vector(Work(Point(500, 0), drip)))
 
   @tailrec
-  def run(board: Board, workQueue: WorkQueue = Vector(spring)): Board = {
+  def run(board: Board, workQueue: WorkQueue): Board =
     workQueue.headOption match {
       case Some(Work(point, f)) =>
         val (newBoard, newWork) = f(board, point)
         run(newBoard, workQueue.drop(1) ++ newWork)
       case None =>
-        log(board, workQueue)
         board
     }
-  }
 
   def parse(input: List[String]): Board = {
     val reYrange = raw"x=(\d+), y=(\d+)\.\.(\d+)".r
@@ -70,18 +51,14 @@ object Main {
   }
 
   val drip: WorkFunction = (board, point) => {
-    if(!board.get(point).contains(Reachable) && point != Point(500,0)) {
-      (board, List())
-    } else {
-      val (ul, lr) = getBounds(board)
-      val pointsToFloor = Iterator.range(point.y + 1, lr.y + 1)
-        .map(Point(point.x, _))
-        .takeWhile(p => !board.contains(p))
-        .toList
-      val newBoard = board ++ pointsToFloor.map(_ -> Reachable)
-      val newWork = pointsToFloor.lastOption.map(Work(_, spread)).toList
-      (newBoard, newWork)
-    }
+    val (ul, lr) = getBounds(board)
+    val pointsToFloor = Iterator.range(point.y + 1, lr.y + 1)
+      .map(Point(point.x, _))
+      .takeWhile(p => !board.contains(p))
+      .toList
+    val newBoard = board ++ pointsToFloor.map(_ -> Reachable)
+    val newWork = pointsToFloor.lastOption.map(Work(_, spread)).toList
+    (newBoard, newWork)
   }
 
   val spread: WorkFunction = (board, point) => {
@@ -114,9 +91,7 @@ object Main {
     (followFloor(leftOf)(point, board), followFloor(rightOf)(point, board))
 
   def followFloor(dir: Point=>Point)(point: Point, board: Board): FollowResult = {
-    val bounds = getBounds(board)
     val points = Iterator.iterate(point)(dir)
-      .takeWhile(inbounds(bounds)) // in bounds
       .takeWhile { p => !board.get(p).contains(Clay) } // it's not a wall
       .takeWhile { p => // there's something below us
         val belowP = board.get(below(p))
@@ -129,18 +104,12 @@ object Main {
       val oneMore = dir(points.last)
       board.get(oneMore) match {
         case Some(Clay) => Right(points)
-        case _ if inbounds(bounds)(oneMore) => Left(points :+ oneMore)
-        case _ => Left(points)
+        case _ => Left(points :+ oneMore)
       }
     }
     result
   }
 
-  def inbounds(board: Board)(point: Point): Boolean = inbounds(getBounds(board))(point)
-  def inbounds(bounds: (Point, Point))(point: Point): Boolean = {
-    val (ul, lr) = bounds
-    ul.x <= point.x && point.x <= lr.x && ul.y <= point.y && point.y <= lr.y
-  }
   def getBounds(board: Board): (Point, Point) = {
     val ul = Point(board.keys.minBy(_.x).x, board.keys.minBy(_.y).y)
     val lr = Point(board.keys.maxBy(_.x).x, board.keys.maxBy(_.y).y)

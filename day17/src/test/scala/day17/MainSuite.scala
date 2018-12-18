@@ -27,36 +27,11 @@ class MainSuite extends FunSuite with Matchers {
                                          |y=9, x=494..506
                                          |""".stripMargin.lines.toList)
 
-//  test("drip") {
-//    Main.drip(board).filter(_._2 == NewReachable).keys should
-//      contain theSameElementsAs (1 to 6).map(Point(500,_))
-//    Main.drip(board.updated(Point(505,0), NewReachable)).filter(_._2 == NewReachable).keys should
-//      contain theSameElementsAs (1 to 6).map(Point(500,_)) ++ (1 to 13).map(Point(505,_))
-//  }
-
-//  test("spread") {
-//    val dripped = Main.drip(board)
-//    val str = Main.toString(Main.spread(dripped))
-//    str should be (""".....|......
-//                     |.....|.....#
-//                     |#..#////...#
-//                     |#..#~~#.....
-//                     |#..#~~#.....
-//                     |#~~~~~#.....
-//                     |#~~~~~#.....
-//                     |#######.....
-//                     |............
-//                     |............
-//                     |...#.....#..
-//                     |...#.....#..
-//                     |...#.....#..
-//                     |...#######..""".stripMargin)
-//  }
-
   test("run") {
-    val str = Main.toString(Main.run(board))
+    val str = Main.toString(Main.run(board.updated(Point(500,0), Reachable)))
     println(str)
-    str should be (""".....|.....#
+    str should be (""".....|......
+                     |.....|.....#
                      |#..#||||...#
                      |#..#~~#|....
                      |#..#~~#|....
@@ -71,40 +46,19 @@ class MainSuite extends FunSuite with Matchers {
                      |..|#######|.""".stripMargin)
   }
 
-  test("countWaters") {
-    Main.countWaters(Main.run(board)) should be (57)
-  }
-
   test("bucket-in-bucket run") {
-    val str = Main.toString(Main.run(bucketInBucketBoard))
+    val str = Main.toString(Main.run(bucketInBucketBoard.updated(Point(500,0), Reachable)))
     println(str)
-    str should be (""".#|||||||||||
-                     |.#~~~~~~~~~#|
-                     |.#~~#~~~#~~#|
-                     |.#~~#~~~#~~#|
-                     |.#~~#####~~#|
-                     |.#~~~~~~~~~#|
-                     |.###########|
-                     ||||||||||||||
-                     |#############""".stripMargin)
+    str should be (""".......|.......
+                     |..#|||||||||||.
+                     |..#~~~~~~~~~#|.
+                     |..#~~#~~~#~~#|.
+                     |..#~~#~~~#~~#|.
+                     |..#~~#####~~#|.
+                     |..#~~~~~~~~~#|.
+                     |..###########|.
+                     ||||||||||||||||
+                     ||#############|""".stripMargin)
   }
-
-//  test("bucket-in-bucket spread") {
-//    val intermediateBoard = Main.drip(Main.spread(Main.drip(bucketInBucketBoard)))
-//    println("*****************************************")
-//    val finalBoard = Main.spread(intermediateBoard)
-//    val str = Main.toString(finalBoard)
-//    println(str)
-//    str should be ("""......|......
-//                     |.#....|......
-//                     |.#./|||||/.#.
-//                     |.#~~#~~~#~~#.
-//                     |.#~~#~~~#~~#.
-//                     |.#~~#####~~#.
-//                     |.#~~~~~~~~~#.
-//                     |.###########.
-//                     |.............
-//                     |#############""".stripMargin)
-//  }
 
 }
