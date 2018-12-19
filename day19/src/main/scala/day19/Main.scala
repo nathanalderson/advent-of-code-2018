@@ -47,16 +47,22 @@ object Main {
     val (program, ipReg) = parse(input)
     val finalRegs = run(program, emptyRegs, ipReg, 0)
     println(s"ans1 = ${finalRegs.head}")
+    run(program, emptyRegs.updated(0,1), ipReg, 0, Some(50), print = true)
   }
 
-  def run(program: Program, regs: Regs, ipReg: Int, ip: Int): Regs = {
-    program.lift(ip) match {
-      case Some(inst) =>
-        val newRegs = inst.op(regs.updated(ipReg, ip), inst.a, inst.b, inst.c)
-//        println(s"ip=${regs(ipReg)} [${regs.mkString(", ")}] ${show(inst)} [${newRegs.mkString(", ")}]")
-        val newIp = newRegs(ipReg) + 1
-        run(program, newRegs, ipReg, newIp)
-      case None => regs
+  def run(program: Program, regs: Regs, ipReg: Int, ip: Int, iterations: Option[Int] = None, print: Boolean = false): Regs = {
+    if (iterations.contains(0))
+      regs
+    else {
+      program.lift(ip) match {
+        case Some(inst) =>
+          val newRegs = inst.op(regs.updated(ipReg, ip), inst.a, inst.b, inst.c)
+          if (print)
+            println(s"ip=$ip [${regs.mkString(", ")}] ${show(inst)} [${newRegs.mkString(", ")}]")
+          val newIp = newRegs(ipReg) + 1
+          run(program, newRegs, ipReg, newIp, iterations.map(_-1), print)
+        case None => regs
+      }
     }
   }
 
