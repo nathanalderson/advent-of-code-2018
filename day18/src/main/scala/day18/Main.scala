@@ -10,47 +10,41 @@ case object Lumber extends Acre
 
 object Main {
   type State = Map[Point, Acre]
+  val size = 50
 
   def main(args: Array[String]): Unit = {
     val input = Source.fromFile("input.txt").getLines.toList
     val state = parse(input)
-    println(s"ans1 = ${ans1(state, 50)}")
-//    runAndShowForever(state, 50)
-    println(s"ans2 = ${ans2(state, 50)}")
+    println(s"ans1 = ${resourceValue(play(state, 10))}")
+    println(s"ans2 = ${ans2(state)}")
   }
 
-  def ans2(state: State, size: Int): Int = {
-    val (dupIdx1, dupIdx2) = findDupState(state, 50)
+  def ans2(state: State): Int = {
+    val (dupIdx1, dupIdx2) = findCycle(state)
     val cycleSize = dupIdx2 - dupIdx1
     val roundsToRun = dupIdx1 + ((1000000000-dupIdx1) % cycleSize)
-    resourceValue(play(state, roundsToRun, size))
+    resourceValue(play(state, roundsToRun))
   }
 
-  def rounds(state: State, size: Int): Iterator[State] =
-    Iterator.iterate(state)(round(size))
+  def rounds(state: State): Iterator[State] =
+    Iterator.iterate(state)(round)
 
-  def findDupState(state: State, size: Int): (Int, Int) = {
-    val stream = rounds(state, size).toStream
+  def findCycle(state: State): (Int, Int) = {
+    val stream = rounds(state).toStream
     val (dupState, dupIdx) = stream.zipWithIndex.find {
       case (s, idx) => stream.take(idx).contains(s)
     }.get
-    val firstOccurance = stream.indexOf(dupState)
-    (firstOccurance, dupIdx)
+    val firstOccurrence = stream.indexOf(dupState)
+    (firstOccurrence, dupIdx)
   }
-
-  def runAndShowForever(state: State, size: Int): Unit =
-    rounds(state, size).foreach(s => println(show(s)+"\n"))
 
   def resourceValue(state: State): Int =
     state.count(_._2==Trees) * state.count(_._2==Lumber)
 
-  def ans1(state: State, size: Int): Int =
-    resourceValue(play(state, 10, size))
+  def play(state: State, numRounds: Int): State =
+    rounds(state).drop(numRounds).next
 
-  def play(state: State, numRounds: Int, size: Int): State =
-    rounds(state, size).drop(numRounds).next
-
-  def candidates(size: Int): Seq[Point] =
+  def candidates: Seq[Point] =
     for(y <- 0 until size; x <- 0 until size) yield Point(x,y)
 
   def neighborPoints(p: Point): Seq[Point] =
@@ -59,8 +53,8 @@ object Main {
   def liveNeighbors(p: Point, s: State): Seq[Acre] =
     neighborPoints(p).flatMap(s.get)
 
-  def round(size: Int)(s: State): State =
-    candidates(size).flatMap { p =>
+  def round(s: State): State =
+    candidates.flatMap { p =>
       (s.get(p) match {
         case Some(Trees) => if (liveNeighbors(p, s).count(_==Lumber) >= 3) Some(Lumber) else Some(Trees)
         case Some(Lumber) =>
@@ -80,7 +74,6 @@ object Main {
     }.toMap
 
   def show(state: State): String = {
-    val size = state.keys.map(_.x).max
     val board = for(y <- 0 to size) yield {
       val row = for(x <- 0 to size) yield {
         state.get(Point(x,y)) match {
