@@ -47,7 +47,10 @@ object Main {
     val (program, ipReg) = parse(input)
     val finalRegs = run(program, emptyRegs, ipReg, 0)
     println(s"ans1 = ${finalRegs.head}")
-    run(program, emptyRegs.updated(0,1), ipReg, 0, Some(50), print = true)
+//    run(program, emptyRegs.updated(0,1), ipReg, 0, Some(500), print = true)
+    println(s"ans2 = 10915260")
+    println(s"""       ans2 calculated by reverse-engineering the input program. See
+               |       `decompiled.txt`. Basically it sums the factors of 10551389.""".stripMargin)
   }
 
   def run(program: Program, regs: Regs, ipReg: Int, ip: Int, iterations: Option[Int] = None, print: Boolean = false): Regs = {
@@ -58,7 +61,7 @@ object Main {
         case Some(inst) =>
           val newRegs = inst.op(regs.updated(ipReg, ip), inst.a, inst.b, inst.c)
           if (print)
-            println(s"ip=$ip [${regs.mkString(", ")}] ${show(inst)} [${newRegs.mkString(", ")}]")
+            println(f"ip=$ip%2s [${show(regs)}] ${show(inst)} [${show(newRegs)}]")
           val newIp = newRegs(ipReg) + 1
           run(program, newRegs, ipReg, newIp, iterations.map(_-1), print)
         case None => regs
@@ -80,5 +83,8 @@ object Main {
     val opName = Instruction.allOpcodes.find(_._2 == inst.op).get._1
     s"$opName ${inst.a} ${inst.b} ${inst.c}"
   }
+
+  def show(regs: Regs): String =
+    regs.map(r => f"$r%2s").mkString(", ")
 
 }
