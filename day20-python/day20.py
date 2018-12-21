@@ -4,6 +4,7 @@ import sys
 from collections import namedtuple, defaultdict, deque
 from typing import *
 import itertools
+import pickle
 
 sys.setrecursionlimit(10000)
 logging.basicConfig(level=logging.INFO)
@@ -112,12 +113,8 @@ def follow(path: List, positions: List[Point] = None, graph: Graph = None) -> (G
         if node.type == "Seq":
             positions = [followSeq(node, pos, graph) for pos in positions]
         elif node.type == "Branch":
-            positions = flatten(followBranch(node, pos, graph) for pos in positions)
+            positions = flatten(follow(path, positions, graph)[1] for path in node.val)
     return graph, positions
-
-def followBranch(branch: Branch, pos: Point, graph: Graph) -> List[Point]:
-    log.debug("followBranch:", branch, "pos:", pos)
-    return flatten(follow(path, [pos], graph)[1] for path in branch.val)
 
 def followSeq(seq: Sequence, pos: Point, graph: Graph) -> Point:
     log.debug("followSeq:", seq, "pos:", pos)
@@ -132,14 +129,17 @@ def go(dir: str, pos: Point) -> Point:
     elif dir == "S": return Point(pos.x, pos.y-1)
     elif dir == "E": return Point(pos.x+1, pos.y)
     elif dir == "W": return Point(pos.x-1, pos.y)
-    else: raise ValueError(f"Unknown direction: {dir}")
+    else: raise ValueError("Unknown direction:", dir)
 
 def addReachable(p1: Point, p2: Point, graph: Graph) -> None:
     graph[p1].add(p2)
     graph[p2].add(p1)
 
 def flatten(l):
-    return list(itertools.chain.from_iterable(l))
+    try:
+        return list(itertools.chain.from_iterable(l))
+    except TypeError:
+        return l
 
 def get_dists(graph: Graph, start) -> Dict[Point, int]:
     frontier = deque([start])
@@ -164,11 +164,14 @@ def main():
     parsed = parse(data)
     print("following path...")
     graph = follow(parsed)[0]
+    print("pickling the graph...")
+    with open("graph.pickle", "w") as f:
+        pickle.dump(graph, f)
     print("calculating distances...")
     farthest, dist = farthest_room(graph, Point(0,0))
     print("done.")
     print("")
-    print(f"ans1 = {dist}")
+    print("ans1 =", dist)
 
 if __name__ == "__main__":
     main()
