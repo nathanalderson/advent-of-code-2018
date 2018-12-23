@@ -50,15 +50,3 @@ def test_get_dists():
     assert dists[(-1, 1)] == 2
     assert dists[(1, 2)] == 3
     assert dists[(-1, 2)] == 3
-
-def test_farthest_room():
-    graph = follow(parse("^WNE$"))[0]
-    assert farthest_room(graph, (0,0)) == (Point(0,1), 3)
-
-def test_farthest_medium():
-    graph = follow(parse("^ESSWWN(E|NNENN(EESS(WNSE|)SSS|WWWSSSSE(SW|NNNE)))$"))[0]
-    assert farthest_room(graph, (0,0))[1] == 23
-
-def test_farthest_medium2():
-    graph = follow(parse("^WSSEESWWWNW(S|NENNEEEENN(ESSSSW(NWSW|SSEN)|WSWWN(E|WWS(E|SS))))$"))[0]
-    assert farthest_room(graph, (0,0))[1] == 31

@@ -4,9 +4,8 @@ import sys
 from collections import namedtuple, defaultdict, deque
 from typing import *
 import itertools
-import pickle
 
-sys.setrecursionlimit(10000)
+sys.setrecursionlimit(2500)
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
@@ -34,18 +33,11 @@ class Sequence(Node):
         self.type = "Seq"
         self.val = val
 
-    # def __str__(self):
-    #     return self.val
-
 class Branch(Node):
     def __init__(self, *args):
         super().__init__()
         self.type = "Branch"
         self.val = args
-
-    # def __str__(self):
-    #     return f'({"|".join(str(l) for l in self.val)})'
-
 
 grammar = Grammar(
     r"""
@@ -98,20 +90,18 @@ def parse(data):
     except ParseError as e:
         raise ValueError(str(e)) from e
     log.debug(parsed)
-
     visitor = RegexVisitor()
     result = visitor.visit(parsed)
     log.debug(result)
-
     return result
 
-def follow(path: List, positions: List[Point] = None, graph: Graph = None) -> (Graph, List[Point]):
+def follow(path: List, positions: Set[Point] = None, graph: Graph = None) -> (Graph, Set[Point]):
     log.debug("follow:", path, "positions:", positions)
-    positions = positions or [Point(0,0)]
+    positions = positions or {Point(0,0)}
     graph = graph or defaultdict(set)
     for node in path:
         if node.type == "Seq":
-            positions = [followSeq(node, pos, graph) for pos in positions]
+            positions = {followSeq(node, pos, graph) for pos in positions}
         elif node.type == "Branch":
             positions = flatten(follow(path, positions, graph)[1] for path in node.val)
     return graph, positions
@@ -152,26 +142,14 @@ def get_dists(graph: Graph, start) -> Dict[Point, int]:
                 dists[next] = dists[current] + 1
     return dists
 
-def farthest_room(graph: Graph, start) -> (Point, int):
-    dists = get_dists(graph, start)
-    farthest = max(dists, key=dists.get)
-    return farthest, dists[farthest]
-
 def main():
     with open("input.txt") as f:
         data = f.read().strip()
-    print("parsing input...")
     parsed = parse(data)
-    print("following path...")
     graph = follow(parsed)[0]
-    print("pickling the graph...")
-    with open("graph.pickle", "w") as f:
-        pickle.dump(graph, f)
-    print("calculating distances...")
-    farthest, dist = farthest_room(graph, Point(0,0))
-    print("done.")
-    print("")
-    print("ans1 =", dist)
+    dists = get_dists(graph, Point(0,0))
+    print("ans1 =", dists[max(dists, key=dists.get)])
+    print("ans2 =", len([p for p,d in dists.items() if d >= 1000]))
 
 if __name__ == "__main__":
     main()
