@@ -14,24 +14,15 @@ case object Torch extends Equipment
 case object ClimbingGear extends Equipment
 case object Neither extends Equipment
 
-sealed trait Command
-case object Left extends Command
-case object Right extends Command
-case object Up extends Command
-case object Down extends Command
-case object EquipTorch extends Command
-case object EquipClimbingGear extends Command
-case object EquipNeither extends Command
-
-
 object Main {
   type State = (Point, Equipment)
 
   def main(args: Array[String]): Unit = {
-//    val depth = 3558
-//    val target = Point(15,740)
-    val depth = 510
-    val target = Point(10,10)
+    val depth = 3558
+    val target = Point(15,740)
+    // test values
+//    val depth = 510
+//    val target = Point(10,10)
     val cave = for (x <- 0 to target.x; y <- 0 to target.y) yield Point(x,y)
     val erosionLevels = mutable.HashMap[Point, Long]()
     val geoIdxs = mutable.HashMap[Point, Long]()
@@ -106,7 +97,7 @@ object Main {
       ).filterNot(_==s).filter(valid)
     }
 
-    def valid(s1: State): Boolean = s1 match {
+    def valid(s: State): Boolean = s match {
       case (point@Point(x,y), equip) =>
         (x >= 0 && y >= 0) && (regionType(point) match {
           case Rocky => equip == ClimbingGear || equip == Torch
@@ -115,14 +106,9 @@ object Main {
         })
     }
 
-    def pathLen(path: List[State]): Long =
-      path.sliding(2).map { case List(s1, s2) => cost(s1, s2) }.sum
-
     println(s"ans1 = ${cave.map(riskLevel).sum}")
-    val path = PathFinder[State]((Point(0,0), Torch), (target, Torch), neighbors, heuristic, cost)
-    println(s"path = $path")
-    println(s"ans2 = ${pathLen(path)}")
-
+    val (cameFrom, costSoFar) = AStar((Point(0,0), Torch), (target, Torch), neighbors, heuristic, cost)
+    println(s"ans2 = ${costSoFar((target, Torch))}")
   } // main
 }
 
