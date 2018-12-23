@@ -1,7 +1,5 @@
 package day22
 
-import astar.{AStar, Engine}
-
 import scala.collection.mutable
 
 case class Point(x: Int, y: Int)
@@ -90,56 +88,38 @@ object Main {
       println(rows.mkString("\n"))
     }
 
-    val engine: Engine[State, Command] = new Engine[State, Command] {
-      def valid(self: State): Boolean = self match {
-        case (point@Point(x,y), equip) =>
-          (x >= 0 && y >= 0) && (regionType(point) match {
-            case Rocky => equip == ClimbingGear || equip == Torch
-            case Wet => equip == ClimbingGear || equip == Neither
-            case Narrow => equip == Torch || equip == Neither
-          })
-      }
+    def heuristic(s1: State, s2: State): Int =
+      Math.abs(s1._1.x - s2._1.x) + Math.abs(s1._1.y - s2._1.y)
 
-      def bisimilar(self: State, other: State): Boolean = self == other
+    def cost(s1: State, s2: State): Long =
+      if (s1 == s2) 0 else if (s1._2 == s2._2) 1 else 7
 
-      def hash(self: State): Int = self.hashCode
-
-      def transition(state: State, cmd: Command): State = (state, cmd) match {
-        case ((Point(x, y), e), Left)    => (Point(x-1, y), e)
-        case ((Point(x, y), e), Right)   => (Point(x+1, y), e)
-        case ((Point(x, y), e), Up)      => (Point(x, y-1), e)
-        case ((Point(x, y), e), Down)    => (Point(x, y+1), e)
-        case ((p, e), EquipClimbingGear) => (p, ClimbingGear)
-        case ((p, e), EquipTorch)        => (p, Torch)
-        case ((p, e), EquipNeither)      => (p, Neither)
-      }
-
-      def commands = List(Left, Right, Up, Down, EquipClimbingGear, EquipTorch, EquipNeither)
-
-      def heuristic(s1: State, s2: State): Int =
-        Math.abs(s1._1.x - s2._1.x) + Math.abs(s1._1.y - s2._1.y)
-
-      def cost(s1: State, s2: State): Double =
-        if (s1._2 == s2._2) 1 else 7
-
-      def distance(s1: State, s2: State): Double = cost(s1, s2) + heuristic(s1, s2)
+    def neighbors(s: State): List[State] = s match {
+      case (Point(x,y), equip) => List(
+        (Point(x+1, y), equip),
+        (Point(x-1, y), equip),
+        (Point(x, y+1), equip),
+        (Point(x, y-1), equip),
+        (Point(x,y), Torch),
+        (Point(x,y), ClimbingGear),
+        (Point(x,y), Neither)
+      ).filterNot(_==s).filter(valid)
     }
 
-    val astarSolver = AStar[State, Command](
-      (Point(0,0), Torch),
-      (target, Torch),
-      engine
-    )
-
-    def pathLen(path: List[Command]): Int = {
-      path.map { command =>
-        if (command == EquipNeither || command == EquipTorch || command == EquipClimbingGear) 7
-        else 1
-      }.sum
+    def valid(s1: State): Boolean = s1 match {
+      case (point@Point(x,y), equip) =>
+        (x >= 0 && y >= 0) && (regionType(point) match {
+          case Rocky => equip == ClimbingGear || equip == Torch
+          case Wet => equip == ClimbingGear || equip == Neither
+          case Narrow => equip == Torch || equip == Neither
+        })
     }
+
+    def pathLen(path: List[State]): Long =
+      path.sliding(2).map { case List(s1, s2) => cost(s1, s2) }.sum
 
     println(s"ans1 = ${cave.map(riskLevel).sum}")
-    val path = astarSolver.computePath.get
+    val path = PathFinder[State]((Point(0,0), Torch), (target, Torch), neighbors, heuristic, cost)
     println(s"path = $path")
     println(s"ans2 = ${pathLen(path)}")
 

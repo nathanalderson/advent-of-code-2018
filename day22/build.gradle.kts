@@ -17,14 +17,12 @@ application {
 }
 
 repositories {
-    mavenCentral()
+    jcenter()
 }
 
 dependencies {
     // Use Scala 2.12 in our library project
     implementation("org.scala-lang:scala-library:2.12.7")
-
-    implementation("org.scalaz:scalaz-core_2.12:7.2.27")
 
     // Use Scalatest for testing our library
     testImplementation("junit:junit:4.12")
