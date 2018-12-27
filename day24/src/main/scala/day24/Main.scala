@@ -46,77 +46,85 @@ case class Group(team: Team, num: Int, hp: Int, weakTo: List[String], immuneTo: 
 object Main {
   def main(args: Array[String]): Unit = {
     val immuneSystem = parse(Input.immuneSystem, ImmuneSystem)
-    val infection = parse(Input.infection, Infection)
-    val finalGroups = play(immuneSystem++infection)
-    val ans1 = finalGroups.map(_.num).sum
+    val infection = parse(Input.infection, Infection, immuneSystem.keys.max + 1)
+    val allGroups = immuneSystem ++ infection
+    val finalGroups = play(allGroups)
+    val ans1 = finalGroups.values.map(_.num).sum
     println(s"ans1 = $ans1")
-    // 7477 - too low
   }
 
-  def play(groups: List[Group]): List[Group] = {
-    println("***** round")
-    val (immuneSystem, infection) = groups.partition(_.team == ImmuneSystem)
+  def play(groups: Map[Int, Group]): Map[Int, Group] = {
+//    println("***** round")
+    val (immuneSystem, infection) = groups.toList.partition(_._2.team == ImmuneSystem)
     if (immuneSystem.isEmpty || infection.isEmpty)
-      immuneSystem ++ infection
+      groups
     else {
-      val result = attack(selectTargets(immuneSystem, infection))
-      println(s"result: $result")
+      val result = attack(groups, selectTargets(immuneSystem, infection))
+//      println(s"result: $result")
       play(result)
     }
   }
 
-  def attack(groupTargets: List[(Group, Option[Group])]): List[Group] = {
+  def attack(groups: Map[Int, Group], groupTargets: Map[Int, Option[Int]]): Map[Int, Group] = {
     implicit val ordering: Ordering[Group] = Ordering.by[Group, Int](_.initiative).reverse
-    groupTargets.sortBy(_._1).foldLeft(List[Group](), List[Group]()) {
-      case ((killedGroups, remainingGroups), (attackingGroup, Some(targetGroup))) if !killedGroups.contains(attackingGroup) =>
-        println(s"$attackingGroup attacking $targetGroup")
-        targetGroup.takeDamage(attackingGroup.effectivePower, attackingGroup.attackType) match {
-          case None => (targetGroup::killedGroups, remainingGroups)
-          case Some(t) => (killedGroups, t::remainingGroups)
+    val (killedGroups, remainingGroups) = groups.toList.sortBy(_._2).map(_._1).foldLeft(List[Int](), groups) {
+      case ((killed, remaining), attackingGroupIdx) =>
+        if (killed.contains(attackingGroupIdx))
+          (killed, remaining)
+        else {
+          groupTargets(attackingGroupIdx) match {
+            case None => (killed, remaining)
+            case Some(targetGroupIdx) =>
+              val attackingGroup = remaining(attackingGroupIdx)
+              val targetGroup = remaining(targetGroupIdx)
+//              println(s"$attackingGroup attacking $targetGroup")
+              targetGroup.takeDamage(attackingGroup.effectivePower, attackingGroup.attackType) match {
+                case None => (targetGroupIdx::killed, remaining)
+                case Some(t) => (killed, remaining.updated(targetGroupIdx, t))
+              }
+          }
         }
-      case ((killedGroups, remainingGroups), _) => (killedGroups, remainingGroups)
-    }._2
-    // TODO: add back in any groups that weren't attacked at all
-    // TODO: attack power can be changed during the round if an attacking group has already been attacked.
+    }
+    remainingGroups.filterNot(g => killedGroups.contains(g._1))
   }
 
-  def selectTargets(immuneSystem: List[Group], infection: List[Group]): List[(Group, Option[Group])] =
+  def selectTargets(immuneSystem: List[(Int, Group)], infection: List[(Int, Group)]): Map[Int, Option[Int]] =
     selectTargetsHelper(immuneSystem, infection) ++ selectTargetsHelper(infection, immuneSystem)
 
-  def selectTargetsHelper(groups: List[Group], opposingGroups: List[Group]): List[(Group, Option[Group])] = {
+  def selectTargetsHelper(groups: List[(Int, Group)], opposingGroups: List[(Int, Group)]): Map[Int, Option[Int]] = {
     implicit val ordering: Ordering[Group] = Ordering.by[Group, (Int, Int)] { g =>
       (g.effectivePower, g.initiative)
     }.reverse
-    groups.sorted.foldLeft(List[(Group, Option[Group])](), opposingGroups) {
-      case ((soFar, remainingOpponents), g) =>
-        val (chosenOpponent, remaining) = selectTarget(g, remainingOpponents)
-        ((g, chosenOpponent)::soFar, remaining)
-    }._1
+    groups.sortBy(_._2).foldLeft(List[(Int, Option[Int])](), opposingGroups) {
+      case ((soFar, remainingOpponents), (idx, g)) =>
+        val (chosenOpponentIdx, remaining) = selectTarget((idx, g), remainingOpponents)
+        ((idx, chosenOpponentIdx)::soFar, remaining)
+    }._1.toMap
   }
 
-  def selectTarget(group: Group, opposingGroups: List[Group]): (Option[Group], List[Group]) = {
+  def selectTarget(group: (Int, Group), opposingGroups: List[(Int, Group)]): (Option[Int], List[(Int, Group)]) = {
     implicit val ordering: Ordering[Group] = Ordering.by[Group, (Int, Int, Int)] { g =>
-      (g.effectiveDamage(group.attack, group.attackType), g.effectivePower, g.initiative)
+      (g.effectiveDamage(group._2.attack, group._2.attackType), g.effectivePower, g.initiative)
     }.reverse
-    opposingGroups.sorted.headOption match {
+    opposingGroups.sortBy(_._2).headOption match {
       case None => (None, opposingGroups)
-      case Some(g) =>
-        if (g.effectiveDamage(group.attack, group.attackType) > 0) (Some(g), opposingGroups.filterNot(_ == g))
+      case Some((idx, g)) =>
+        if (g.effectiveDamage(group._2.attack, group._2.attackType) > 0) (Some(idx), opposingGroups.filterNot(_._1 == idx))
         else (None, opposingGroups)
     }
   }
 
-  def parse(input: List[String], team: Team): List[Group] = {
+  def parse(input: List[String], team: Team, startIdx: Int = 0): Map[Int, Group] = {
     val reGroup = raw"(\d+) units each with (\d+) hit points (\(.*?\))? ?with an attack that does (\d+) (\w+) damage at initiative (\d+)".r
     val reImmuneTo = raw"immune to ([\w, ]+)".r.unanchored
     val reWeakTo = raw"weak to ([\w, ]+)".r.unanchored
-    input.map {
-      case reGroup(num, hp, attack, attackType, initiative) =>
-        Group(team, num.toInt, hp.toInt, List(), List(), attack.toInt, attackType, initiative.toInt)
-      case reGroup(num, hp, weakAndImmune, attack, attackType, initiative) =>
+    input.zipWithIndex.map {
+      case (reGroup(num, hp, attack, attackType, initiative), idx) =>
+        idx+startIdx -> Group(team, num.toInt, hp.toInt, List(), List(), attack.toInt, attackType, initiative.toInt)
+      case (reGroup(num, hp, weakAndImmune, attack, attackType, initiative), idx) =>
         val weakTo = weakAndImmune match { case reWeakTo(l) => l.split(", ").toList; case _ => List[String]() }
         val immuneTo = weakAndImmune match { case reImmuneTo(l) => l.split(", ").toList; case _ => List[String]() }
-        Group(team, num.toInt, hp.toInt, weakTo, immuneTo, attack.toInt, attackType, initiative.toInt)
-    }
+        idx+startIdx -> Group(team, num.toInt, hp.toInt, weakTo, immuneTo, attack.toInt, attackType, initiative.toInt)
+    }.toMap
   }
 }

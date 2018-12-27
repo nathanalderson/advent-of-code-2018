@@ -13,25 +13,21 @@ class MainSuite extends FunSuite with Matchers {
   val infectionRaw = """801 units each with 4706 hit points (weak to radiation) with an attack that does 116 bludgeoning damage at initiative 1
                        |4485 units each with 2961 hit points (immune to radiation; weak to fire, cold) with an attack that does 12 slashing damage at initiative 4""".stripMargin.lines.toList
   val immuneSystem = parse(immuneSystemRaw, ImmuneSystem)
-  val infection = parse(infectionRaw, Infection)
+  val infection = parse(infectionRaw, Infection, immuneSystem.keys.max + 1)
   val groups = immuneSystem ++ infection
 
-//  test("selectTargets") {
-//    selectTargets(groups) should contain theSameElementsAs List(
-//      infection(0)->Some(immuneSystem(0)), infection(1)->Some(immuneSystem(1)),
-//      immuneSystem(0)->Some(infection(1)), immuneSystem(1)->Some(infection(0)))
-//  }
+  test("selectTargets") {
+    selectTargets(immuneSystem.toList, infection.toList) should contain theSameElementsAs List(
+      1->Some(2), 0->Some(3),
+      3->Some(1), 2->Some(0))
+  }
 
-//  test("attack") {
-//    val targets = selectTargets(groups)
-//    attack(targets) should contain theSameElementsAs List(
-//      Group(ImmuneSystem, 905, 1274, List("bludgeoning", "slashing"), List("fire"), 25, "slashing", 3),
-//      Group(Infection, 796, 4706, List("radiation"), List(""), 116, "bludgeoning", 1), // AoC says this should be 797, but...
-//      Group(Infection, 4434, 2961, List("fire", "cold"), List("radiation"), 12, "slashing", 4),
-//    )
-//  }
+  test("attack") {
+    val targets = selectTargets(immuneSystem.toList, infection.toList)
+    attack(groups, targets).mapValues(_.num) should be (Map(1 -> 905, 2 -> 797, 3 -> 4434))
+  }
 
   test("play") {
-    play(groups).map(_.num) should contain theSameElementsAs List(782, 4434)
+    play(groups).mapValues(_.num) should be (Map(2->782, 3->4434))
   }
 }
