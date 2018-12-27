@@ -51,6 +51,15 @@ object Main {
     val finalGroups = play(allGroups)
     val ans1 = finalGroups.values.map(_.num).sum
     println(s"ans1 = $ans1")
+    // 27 => infection win
+    // 28-33 => stalemate (causes my program to hang...)
+    // 34 => immune system win
+    val boost = 34
+    val boostedImmuneSystem = immuneSystem.mapValues(g => g.copy(attack=g.attack+boost))
+    val finalGroupsBoosted = play(boostedImmuneSystem ++ infection)
+    val winner = finalGroupsBoosted.head._2.team
+    println(s"winner with boost $boost is $winner")
+    println(s"number of winning units: ${finalGroupsBoosted.values.map(_.num).sum}")
   }
 
   def play(groups: Map[Int, Group]): Map[Int, Group] = {
