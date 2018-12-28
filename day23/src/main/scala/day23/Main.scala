@@ -20,34 +20,28 @@ object Main {
     println(s"ans1 = $inRange")
 
     val box = initialBox(bots)
-    // sort by most in range, then closest to origin, then smallest box
+    // sort by most in range, then largest box, then closest to origin
     val ordering: Ordering[(Int, Int, Int, Box)] = Ordering.by[(Int, Int, Int, Box), (Int, Int, Int)](x => (x._1, x._2, -1*x._3))
     val queue = mutable.PriorityQueue[(Int, Int, Int, Box)](
       (bots.length, 2*box._2.x, 3*box._2.x, box))(ordering) // inRange, boxSize, distToOrigin, box
     val ans2 = processQueue(queue, bots)
     println(s"ans2 = $ans2")
-    // 976 - too low
   }
 
   def processQueue(queue: mutable.PriorityQueue[(Int, Int, Int, Box)], bots: List[Bot]): Int = {
-    var round = 0
     while (queue.nonEmpty) {
-      round += 1
       val (inRange, boxSize, distToOrigin, box) = queue.dequeue()
-      if (round == 2) {
-        println(s"$inRange $boxSize, $distToOrigin, $box")
-      }
       if (boxSize == 1) {
         println(s"Found closest at ${box._1} dist $distToOrigin ($inRange bots in Range)")
-        return inRange
+        return distToOrigin
       }
       val newBoxSize = boxSize / 2
       for (octant <- List((0, 0, 0), (0, 0, 1), (0, 1, 0), (0, 1, 1), (1, 0, 0), (1, 0, 1), (1, 1, 0), (1, 1, 1))) {
-        val newBoxMin: Point = Point(box._1.x + newBoxSize * octant._1, box._1.y + newBoxSize * octant._2, box._1.z + newBoxSize * octant._3)
+        val newBoxMin = Point(box._1.x + newBoxSize * octant._1, box._1.y + newBoxSize * octant._2, box._1.z + newBoxSize * octant._3)
         val newBoxMax = Point(newBoxMin.x+newBoxSize, newBoxMin.y+newBoxSize, newBoxMin.z+newBoxSize)
         val newBox = (newBoxMin, newBoxMax)
         val newInRange = numIntersections(newBox, bots)
-        queue.+=((newInRange, newBoxSize, boxDistanceToOrigin(newBox), newBox))
+        queue += ((newInRange, newBoxSize, boxDistanceToOrigin(newBox), newBox))
       }
     }
     throw new Exception("No solution found")
